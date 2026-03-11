@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
+ORT_OUT_PATH = Path(__file__).parent / "ort-out"
 
 
 class VcsInfo(BaseModel):
@@ -71,6 +72,7 @@ class LicenseFinding(BaseModel):
 
 
 class PackageScanResult(BaseModel):
+    package_id: str = ""
     provenance: dict
     licenses: list[LicenseFinding]
 
@@ -180,6 +182,48 @@ def parse_vcs(raw: dict) -> VcsInfo:
     )
 
 
+def pkg_id_to_dir(pkg_id: str) -> Path | None:
+    parts = pkg_id.split(":")
+    if len(parts) < 4:
+        return None
+    type_, namespace, name, version = parts[0], parts[1], parts[2], parts[3]
+    if not namespace:
+        namespace = "unknown"
+    return ORT_OUT_PATH / type_ / namespace / name / version
+
+
+class FileContentLine(BaseModel):
+    number: int
+    content: str
+    highlighted: bool
+
+
+class FileContent(BaseModel):
+    lines: list[FileContentLine] | None
+
+
+@app.get("/file-content", response_model=FileContent)
+def get_file_content(package_id: str, path: str, start_line: int, end_line: int, context: int = 5):
+    pkg_dir = pkg_id_to_dir(package_id)
+    if pkg_dir is None:
+        return FileContent(lines=None)
+    file_path = pkg_dir / path
+    if not file_path.is_file():
+        return FileContent(lines=None)
+    all_lines = file_path.read_text(errors="replace").splitlines()
+    fetch_start = max(0, start_line - 1 - context)
+    fetch_end = min(len(all_lines), end_line + context)
+    lines = [
+        FileContentLine(
+            number=i + 1,
+            content=all_lines[i],
+            highlighted=(start_line <= i + 1 <= end_line),
+        )
+        for i in range(fetch_start, fetch_end)
+    ]
+    return FileContent(lines=lines)
+
+
 class DownloadStats(BaseModel):
     weekly_downloads: int | None
 
@@ -277,11 +321,28 @@ def get_scan_result():
         pkg.dependency_count = package_dep_counts.get(pkg.id, 0)
 
     scanner_data = data.get("scanner", {})
-    scan_results = [
-        PackageScanResult(
+
+    provenance_map: dict[tuple[str, str], str] = {}
+    for prov in scanner_data.get("provenances", []):
+        pkg_id = prov.get("id", "")
+        vcs = prov.get("package_provenance", {}).get("vcs_info", {})
+        url = vcs.get("url", "")
+        revision = prov.get("package_provenance", {}).get("resolved_revision", "") or vcs.get("revision", "")
+        if url and revision:
+            provenance_map[(url, revision)] = pkg_id
+
+    scan_results = []
+    for sr in scanner_data.get("scan_results", []):
+        print(sr.get("summary", {}).get("licenses", []))
+        prov = sr["provenance"]
+        vcs_url = prov.get("vcs_info", {}).get("url", "")
+        revision = prov.get("resolved_revision", "")
+        package_id = provenance_map.get((vcs_url, revision), "")
+        scan_results.append(PackageScanResult(
+            package_id=package_id,
             provenance={
-                "vcs_info": sr["provenance"].get("vcs_info", {}),
-                "resolved_revision": sr["provenance"].get("resolved_revision", ""),
+                "vcs_info": prov.get("vcs_info", {}),
+                "resolved_revision": prov.get("resolved_revision", ""),
             },
             licenses=[
                 LicenseFinding(
@@ -295,9 +356,7 @@ def get_scan_result():
                 )
                 for lf in sr.get("summary", {}).get("licenses", [])
             ],
-        )
-        for sr in scanner_data.get("scan_results", [])
-    ]
+        ))
 
     return OrtResult(
         repository=repository,

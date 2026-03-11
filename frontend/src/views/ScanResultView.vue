@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useScanResultStore } from '@/stores/scanResult'
+import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'
 
 const store = useScanResultStore()
 onMounted(() => store.fetchScanResult())
@@ -17,6 +17,51 @@ watch(
 const currentPackage = computed(() => store.packages[currentIndex.value])
 const total = computed(() => store.packages.length)
 
+const currentScanResult = computed(
+  () => store.scanResults.find((sr) => sr.package_id === currentPackage.value?.id) ?? null,
+)
+
+const expandedFinding = ref<{ path: string; start_line: number } | null>(null)
+const fileContent = ref<Array<{ number: number; content: string; highlighted: boolean }> | null>(
+  null,
+)
+const fileLoading = ref(false)
+
+async function toggleFinding(finding: LicenseFinding) {
+  const isSame =
+    expandedFinding.value?.path === finding.location.path &&
+    expandedFinding.value?.start_line === finding.location.start_line
+  if (isSame) {
+    expandedFinding.value = null
+    fileContent.value = null
+    return
+  }
+  expandedFinding.value = { path: finding.location.path, start_line: finding.location.start_line }
+  fileContent.value = null
+  fileLoading.value = true
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const params = new URLSearchParams({
+      package_id: currentPackage.value!.id,
+      path: finding.location.path,
+      start_line: String(finding.location.start_line),
+      end_line: String(finding.location.end_line),
+    })
+    const res = await fetch(new URL(`/file-content?${params}`, base).toString())
+    if (res.ok) {
+      const data = await res.json()
+      fileContent.value = data.lines
+    }
+  } finally {
+    fileLoading.value = false
+  }
+}
+
+watch(currentPackage, () => {
+  expandedFinding.value = null
+  fileContent.value = null
+})
+
 const weeklyDownloads = ref<number | null>(null)
 const downloadsLoading = ref(false)
 
@@ -31,7 +76,9 @@ watch(
     downloadsLoading.value = true
     try {
       const base = import.meta.env.VITE_API_BASE_URL || ''
-      const res = await fetch(new URL(`/downloads?purl=${encodeURIComponent(pkg.purl)}`, base).toString())
+      const res = await fetch(
+        new URL(`/downloads?purl=${encodeURIComponent(pkg.purl)}`, base).toString(),
+      )
       if (res.ok) {
         const data = await res.json()
         weeklyDownloads.value = data.weekly_downloads
@@ -51,7 +98,9 @@ watch(
     starsLoading.value = true
     try {
       const base = import.meta.env.VITE_API_BASE_URL || ''
-      const res = await fetch(new URL(`/github-stars?url=${encodeURIComponent(pkg.vcs_url)}`, base).toString())
+      const res = await fetch(
+        new URL(`/github-stars?url=${encodeURIComponent(pkg.vcs_url)}`, base).toString(),
+      )
       if (res.ok) {
         const data = await res.json()
         githubStars.value = data.stars
@@ -129,7 +178,9 @@ watch(
             <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
             <td class="border px-3 py-1.5">
               <span v-if="downloadsLoading">…</span>
-              <span v-else-if="weeklyDownloads !== null">{{ weeklyDownloads.toLocaleString() }}</span>
+              <span v-else-if="weeklyDownloads !== null">{{
+                weeklyDownloads.toLocaleString()
+              }}</span>
               <span v-else>—</span>
             </td>
           </tr>
@@ -143,6 +194,42 @@ watch(
           </tr>
         </tbody>
       </table>
+      <section v-if="currentScanResult?.licenses.length" class="mt-4">
+        <h2 class="text-base font-semibold mb-2">License findings</h2>
+        <div
+          v-for="finding in currentScanResult.licenses"
+          :key="`${finding.location.path}:${finding.location.start_line}`"
+          class="mb-2 border rounded"
+        >
+          <button
+            class="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50"
+            @click="toggleFinding(finding)"
+          >
+            <span class="font-mono font-semibold">{{ finding.license }}</span>
+            <span class="text-gray-500"
+              >{{ finding.location.path }}:{{ finding.location.start_line }}–{{
+                finding.location.end_line
+              }}</span
+            >
+            <span class="ml-auto text-gray-400">score {{ finding.score }}</span>
+          </button>
+          <template
+            v-if="
+              expandedFinding?.path === finding.location.path &&
+              expandedFinding?.start_line === finding.location.start_line
+            "
+          >
+            <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
+            <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
+              Could not load file.
+            </div>
+            <pre
+              v-else
+              class="overflow-x-auto text-xs border-t"
+            ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
+          </template>
+        </div>
+      </section>
     </template>
   </main>
 </template>

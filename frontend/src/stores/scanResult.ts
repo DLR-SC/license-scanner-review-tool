@@ -52,6 +52,7 @@ export interface LicenseFinding {
 }
 
 export interface PackageScanResult {
+  package_id: string
   provenance: {
     vcs_info: VcsInfo
     resolved_revision: string
