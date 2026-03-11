@@ -16,6 +16,29 @@ watch(
 
 const currentPackage = computed(() => store.packages[currentIndex.value])
 const total = computed(() => store.packages.length)
+
+const weeklyDownloads = ref<number | null>(null)
+const downloadsLoading = ref(false)
+
+watch(
+  currentPackage,
+  async (pkg) => {
+    weeklyDownloads.value = null
+    if (!pkg?.purl) return
+    downloadsLoading.value = true
+    try {
+      const base = import.meta.env.VITE_API_BASE_URL || ''
+      const res = await fetch(new URL(`/downloads?purl=${encodeURIComponent(pkg.purl)}`, base).toString())
+      if (res.ok) {
+        const data = await res.json()
+        weeklyDownloads.value = data.weekly_downloads
+      }
+    } finally {
+      downloadsLoading.value = false
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -78,6 +101,14 @@ const total = computed(() => store.packages.length)
           <tr>
             <th class="border px-3 py-1.5 text-left"># Dependencies</th>
             <td class="border px-3 py-1.5">{{ currentPackage.dependency_count }}</td>
+          </tr>
+          <tr>
+            <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
+            <td class="border px-3 py-1.5">
+              <span v-if="downloadsLoading">…</span>
+              <span v-else-if="weeklyDownloads !== null">{{ weeklyDownloads.toLocaleString() }}</span>
+              <span v-else>—</span>
+            </td>
           </tr>
         </tbody>
       </table>

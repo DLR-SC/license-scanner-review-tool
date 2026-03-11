@@ -1,5 +1,7 @@
+import urllib.parse
 from pathlib import Path
 
+import httpx
 import yaml
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -174,6 +176,30 @@ def parse_vcs(raw: dict) -> VcsInfo:
         revision=raw.get("revision", ""),
         path=raw.get("path", ""),
     )
+
+
+class DownloadStats(BaseModel):
+    weekly_downloads: int | None
+
+
+@app.get("/downloads", response_model=DownloadStats)
+async def get_downloads(purl: str):
+    async with httpx.AsyncClient() as client:
+        if purl.startswith("pkg:npm/"):
+            name = urllib.parse.unquote(purl.removeprefix("pkg:npm/").rsplit("@", 1)[0])
+            r = await client.get(f"https://api.npmjs.org/downloads/point/last-week/{name}")
+            if r.status_code != 200:
+                return DownloadStats(weekly_downloads=None)
+            return DownloadStats(weekly_downloads=r.json()["downloads"])
+
+        elif purl.startswith("pkg:pypi/"):
+            name = urllib.parse.unquote(purl.removeprefix("pkg:pypi/").split("@")[0])
+            r = await client.get(f"https://pypistats.org/api/packages/{name}/recent")
+            if r.status_code != 200:
+                return DownloadStats(weekly_downloads=None)
+            return DownloadStats(weekly_downloads=r.json()["data"]["last_week"])
+
+        return DownloadStats(weekly_downloads=None)
 
 
 @app.get("/scan-result", response_model=OrtResult)
