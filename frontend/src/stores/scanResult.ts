@@ -35,6 +35,7 @@ export interface Package {
   declared_licenses_processed: DeclaredLicensesProcessed
   description: string
   homepage_url: string
+  vcs_url: string
   dependency_count: number
 }
 

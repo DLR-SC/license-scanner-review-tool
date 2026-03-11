@@ -1,3 +1,4 @@
+import re
 import urllib.parse
 from pathlib import Path
 
@@ -53,6 +54,7 @@ class Package(BaseModel):
     declared_licenses_processed: DeclaredLicensesProcessed = DeclaredLicensesProcessed()
     description: str = ""
     homepage_url: str = ""
+    vcs_url: str = ""
     dependency_count: int = 0
 
 
@@ -202,6 +204,26 @@ async def get_downloads(purl: str):
         return DownloadStats(weekly_downloads=None)
 
 
+class GitHubStars(BaseModel):
+    stars: int | None
+
+
+@app.get("/github-stars", response_model=GitHubStars)
+async def get_github_stars(url: str):
+    m = re.search(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$", url)
+    if not m:
+        return GitHubStars(stars=None)
+    owner, repo = m.group(1), m.group(2)
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"https://api.github.com/repos/{owner}/{repo}",
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        if r.status_code != 200:
+            return GitHubStars(stars=None)
+        return GitHubStars(stars=r.json()["stargazers_count"])
+
+
 @app.get("/scan-result", response_model=OrtResult)
 def get_scan_result():
     if not SCAN_RESULT_PATH.exists():
@@ -243,6 +265,7 @@ def get_scan_result():
             ),
             description=pkg.get("description", ""),
             homepage_url=pkg.get("homepage_url", ""),
+            vcs_url=pkg.get("vcs_processed", {}).get("url", "") or pkg.get("vcs", {}).get("url", ""),
         )
         for pkg in analyzer_result.get("packages", [])
     ]
