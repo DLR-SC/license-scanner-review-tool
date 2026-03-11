@@ -21,22 +21,17 @@ const currentScanResult = computed(
   () => store.scanResults.find((sr) => sr.package_id === currentPackage.value?.id) ?? null,
 )
 
-const expandedFinding = ref<{ path: string; start_line: number } | null>(null)
+const findingIndex = ref(0)
+const currentFindings = computed(() => currentScanResult.value?.licenses ?? [])
+const currentFinding = computed(() => currentFindings.value[findingIndex.value] ?? null)
+const totalFindings = computed(() => currentFindings.value.length)
+
 const fileContent = ref<Array<{ number: number; content: string; highlighted: boolean }> | null>(
   null,
 )
 const fileLoading = ref(false)
 
-async function toggleFinding(finding: LicenseFinding) {
-  const isSame =
-    expandedFinding.value?.path === finding.location.path &&
-    expandedFinding.value?.start_line === finding.location.start_line
-  if (isSame) {
-    expandedFinding.value = null
-    fileContent.value = null
-    return
-  }
-  expandedFinding.value = { path: finding.location.path, start_line: finding.location.start_line }
+async function loadFinding(finding: LicenseFinding) {
   fileContent.value = null
   fileLoading.value = true
   try {
@@ -57,8 +52,17 @@ async function toggleFinding(finding: LicenseFinding) {
   }
 }
 
+watch(
+  currentFinding,
+  (finding) => {
+    if (finding) loadFinding(finding)
+    else fileContent.value = null
+  },
+  { immediate: true },
+)
+
 watch(currentPackage, () => {
-  expandedFinding.value = null
+  findingIndex.value = 0
   fileContent.value = null
 })
 
@@ -194,40 +198,46 @@ watch(
           </tr>
         </tbody>
       </table>
-      <section v-if="currentScanResult?.licenses.length" class="mt-4">
-        <h2 class="text-base font-semibold mb-2">License findings</h2>
-        <div
-          v-for="finding in currentScanResult.licenses"
-          :key="`${finding.location.path}:${finding.location.start_line}`"
-          class="mb-2 border rounded"
-        >
-          <button
-            class="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50"
-            @click="toggleFinding(finding)"
-          >
-            <span class="font-mono font-semibold">{{ finding.license }}</span>
+      <section v-if="totalFindings" class="mt-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-base font-semibold">
+            Finding {{ findingIndex + 1 }} of {{ totalFindings }}
+          </h2>
+          <div class="flex gap-2">
+            <button
+              class="px-3 py-1 border rounded disabled:opacity-40"
+              :disabled="findingIndex === 0"
+              @click="findingIndex--"
+            >
+              ← Prev
+            </button>
+            <button
+              class="px-3 py-1 border rounded disabled:opacity-40"
+              :disabled="findingIndex === totalFindings - 1"
+              @click="findingIndex++"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+        <div v-if="currentFinding" class="border rounded">
+          <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
+            <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
             <span class="text-gray-500"
-              >{{ finding.location.path }}:{{ finding.location.start_line }}–{{
-                finding.location.end_line
+              >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
+                currentFinding.location.end_line
               }}</span
             >
-            <span class="ml-auto text-gray-400">score {{ finding.score }}</span>
-          </button>
-          <template
-            v-if="
-              expandedFinding?.path === finding.location.path &&
-              expandedFinding?.start_line === finding.location.start_line
-            "
-          >
-            <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
-            <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
-              Could not load file.
-            </div>
-            <pre
-              v-else
-              class="overflow-x-auto text-xs border-t"
-            ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
-          </template>
+            <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
+          </div>
+          <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
+          <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
+            Could not load file.
+          </div>
+          <pre
+            v-else
+            class="overflow-x-auto text-xs"
+          ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
         </div>
       </section>
     </template>
