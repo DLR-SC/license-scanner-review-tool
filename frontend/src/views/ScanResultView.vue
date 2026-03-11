@@ -22,9 +22,34 @@ const currentScanResult = computed(
 )
 
 const findingIndex = ref(0)
-const currentFindings = computed(() => currentScanResult.value?.licenses ?? [])
-const currentFinding = computed(() => currentFindings.value[findingIndex.value] ?? null)
-const totalFindings = computed(() => currentFindings.value.length)
+
+const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
+
+const reviewFindings = computed(() =>
+  allFindings.value.filter(
+    (f) => f.score < 100 || !currentPackage.value?.declared_licenses.includes(f.license),
+  ),
+)
+
+const hiddenFindings = computed(() =>
+  allFindings.value.filter(
+    (f) =>
+      f.score === 100 && (currentPackage.value?.declared_licenses.includes(f.license) ?? false),
+  ),
+)
+
+const hiddenByLicense = computed(() => {
+  const map = new Map<string, number>()
+  for (const f of hiddenFindings.value) {
+    map.set(f.license, (map.get(f.license) ?? 0) + 1)
+  }
+  return map
+})
+
+const currentFinding = computed(() => reviewFindings.value[findingIndex.value] ?? null)
+const totalFindings = computed(() => reviewFindings.value.length)
+
+const showHidden = ref(false)
 
 const fileContent = ref<Array<{ number: number; content: string; highlighted: boolean }> | null>(
   null,
@@ -64,6 +89,7 @@ watch(
 watch(currentPackage, () => {
   findingIndex.value = 0
   fileContent.value = null
+  showHidden.value = false
 })
 
 const weeklyDownloads = ref<number | null>(null)
@@ -198,46 +224,83 @@ watch(
           </tr>
         </tbody>
       </table>
-      <section v-if="totalFindings" class="mt-4 flex flex-col gap-2">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-base font-semibold">
-            Finding {{ findingIndex + 1 }} of {{ totalFindings }}
-          </h2>
-          <div class="flex gap-2">
-            <button
-              class="px-3 py-1 border rounded disabled:opacity-40"
-              :disabled="findingIndex === 0"
-              @click="findingIndex--"
-            >
-              ← Prev
-            </button>
-            <button
-              class="px-3 py-1 border rounded disabled:opacity-40"
-              :disabled="findingIndex === totalFindings - 1"
-              @click="findingIndex++"
-            >
-              Next →
-            </button>
-          </div>
+      <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
+        <h2 class="text-base font-semibold">License findings</h2>
+        <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
+          No findings need review.
         </div>
-        <div v-if="currentFinding" class="border rounded">
-          <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
-            <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
-            <span class="text-gray-500"
-              >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
-                currentFinding.location.end_line
-              }}</span
+        <template v-else-if="currentFinding">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium">
+              Finding {{ findingIndex + 1 }} of {{ totalFindings }}
+            </h3>
+            <div class="flex gap-2">
+              <button
+                class="px-3 py-1 border rounded disabled:opacity-40"
+                :disabled="findingIndex === 0"
+                @click="findingIndex--"
+              >
+                ← Prev
+              </button>
+              <button
+                class="px-3 py-1 border rounded disabled:opacity-40"
+                :disabled="findingIndex >= totalFindings - 1"
+                @click="findingIndex++"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+          <div class="border rounded">
+            <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
+              <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
+              <span class="text-gray-500"
+                >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
+                  currentFinding.location.end_line
+                }}</span
+              >
+              <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
+            </div>
+            <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
+            <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
+              Could not load file.
+            </div>
+            <pre
+              v-else
+              class="overflow-x-auto text-xs"
+            ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
+          </div>
+        </template>
+        <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
+          <div
+            v-for="[license, count] in hiddenByLicense"
+            :key="license"
+            class="text-sm text-gray-400"
+          >
+            {{ count }} finding{{ count === 1 ? '' : 's' }} of
+            <span class="font-mono">{{ license }}</span> with score 100 hidden
+            <button
+              v-if="!showHidden"
+              class="ml-1 underline text-gray-500"
+              @click="showHidden = true"
             >
-            <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
+              show
+            </button>
           </div>
-          <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
-          <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
-            Could not load file.
+          <div v-if="showHidden">
+            <button class="text-sm underline text-gray-500 mb-1" @click="showHidden = false">
+              hide
+            </button>
+            <div
+              v-for="f in hiddenFindings"
+              :key="`${f.location.path}:${f.location.start_line}`"
+              class="text-xs font-mono text-gray-500 px-1"
+            >
+              <span class="font-semibold">{{ f.license }}</span>
+              {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+              <span class="text-gray-400">score {{ f.score }}</span>
+            </div>
           </div>
-          <pre
-            v-else
-            class="overflow-x-auto text-xs"
-          ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
         </div>
       </section>
     </template>
