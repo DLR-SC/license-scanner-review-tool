@@ -7,7 +7,7 @@ onMounted(() => store.fetchScanResult())
 </script>
 
 <template>
-  <main>
+  <main class="p-1">
     <h1>Scan Result</h1>
 
     <div v-if="store.loading">Loading…</div>
@@ -18,9 +18,22 @@ onMounted(() => store.fetchScanResult())
         <h2>Repository</h2>
         <table class="border-collapse w-full text-sm">
           <tbody>
-            <tr><th class="border px-3 py-1.5 text-left">URL</th><td class="border px-3 py-1.5 text-left">{{ store.repository.vcs_processed.url }}</td></tr>
-            <tr><th class="border px-3 py-1.5 text-left">Revision</th><td class="border px-3 py-1.5 text-left">{{ store.repository.vcs_processed.revision }}</td></tr>
-            <tr><th class="border px-3 py-1.5 text-left">Type</th><td class="border px-3 py-1.5 text-left">{{ store.repository.vcs_processed.type }}</td></tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">URL</th>
+              <td class="border px-3 py-1.5 text-left">{{ store.repository.vcs_processed.url }}</td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Revision</th>
+              <td class="border px-3 py-1.5 text-left">
+                {{ store.repository.vcs_processed.revision }}
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Type</th>
+              <td class="border px-3 py-1.5 text-left">
+                {{ store.repository.vcs_processed.type }}
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>
@@ -34,14 +47,20 @@ onMounted(() => store.fetchScanResult())
               <th class="border px-3 py-1.5 text-left">Definition file</th>
               <th class="border px-3 py-1.5 text-left">Declared licenses</th>
               <th class="border px-3 py-1.5 text-left">Scopes</th>
+              <th class="border px-3 py-1.5 text-left"># Dependencies</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="p in store.projects" :key="p.id">
               <td class="border px-3 py-1.5 text-left">{{ p.id }}</td>
               <td class="border px-3 py-1.5 text-left">{{ p.definition_file_path }}</td>
-              <td class="border px-3 py-1.5 text-left">{{ p.declared_licenses_processed.spdx_expression || p.declared_licenses.join(', ') }}</td>
+              <td class="border px-3 py-1.5 text-left">
+                {{
+                  p.declared_licenses_processed.spdx_expression || p.declared_licenses.join(', ')
+                }}
+              </td>
               <td class="border px-3 py-1.5 text-left">{{ p.scope_names.join(', ') }}</td>
+              <td class="border px-3 py-1.5 text-left">{{ p.dependency_count }}</td>
             </tr>
           </tbody>
         </table>
@@ -55,13 +74,17 @@ onMounted(() => store.fetchScanResult())
               <th class="border px-3 py-1.5 text-left">ID</th>
               <th class="border px-3 py-1.5 text-left">Declared license (SPDX)</th>
               <th class="border px-3 py-1.5 text-left">Description</th>
+              <th class="border px-3 py-1.5 text-left"># Dependencies</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="pkg in store.packages" :key="pkg.id">
               <td class="border px-3 py-1.5 text-left">{{ pkg.id }}</td>
-              <td class="border px-3 py-1.5 text-left">{{ pkg.declared_licenses_processed.spdx_expression }}</td>
+              <td class="border px-3 py-1.5 text-left">
+                {{ pkg.declared_licenses_processed.spdx_expression }}
+              </td>
               <td class="border px-3 py-1.5 text-left">{{ pkg.description }}</td>
+              <td class="border px-3 py-1.5 text-left">{{ pkg.dependency_count }}</td>
             </tr>
           </tbody>
         </table>
@@ -80,8 +103,12 @@ onMounted(() => store.fetchScanResult())
           <tbody>
             <tr v-for="(sr, i) in store.scanResults" :key="i">
               <td class="border px-3 py-1.5 text-left">{{ sr.provenance.vcs_info.url }}</td>
-              <td class="border px-3 py-1.5 text-left">{{ sr.provenance.resolved_revision.slice(0, 8) }}</td>
-              <td class="border px-3 py-1.5 text-left">{{ [...new Set(sr.licenses.map((l) => l.license))].join(', ') }}</td>
+              <td class="border px-3 py-1.5 text-left">
+                {{ sr.provenance.resolved_revision.slice(0, 8) }}
+              </td>
+              <td class="border px-3 py-1.5 text-left">
+                {{ [...new Set(sr.licenses.map((l) => l.license))].join(', ') }}
+              </td>
             </tr>
           </tbody>
         </table>

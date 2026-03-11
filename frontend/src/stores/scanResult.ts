@@ -24,6 +24,7 @@ export interface Project {
   declared_licenses_processed: DeclaredLicensesProcessed
   scope_names: string[]
   homepage_url: string
+  dependency_count: number
 }
 
 export interface Package {
@@ -34,6 +35,7 @@ export interface Package {
   declared_licenses_processed: DeclaredLicensesProcessed
   description: string
   homepage_url: string
+  dependency_count: number
 }
 
 export interface LicenseLocation {
