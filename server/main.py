@@ -1,6 +1,10 @@
+import json
+import os
 import re
+import time
 import urllib.parse
 from pathlib import Path
+from typing import Any
 
 import httpx
 import yaml
@@ -19,6 +23,53 @@ app.add_middleware(
 
 SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
 ORT_OUT_PATH = Path(__file__).parent / "ort-out"
+
+CACHE_TTL: dict[str, float] = {
+    "github_stars":   3600,   # 1 hour
+    "npm_downloads":  86400,  # 24 hours
+    "pypi_downloads": 86400,  # 24 hours
+}
+
+CACHE_BACKEND: str = os.environ.get("CACHE_BACKEND", "memory")  # "memory" | "disk"
+CACHE_FILE: Path = Path(os.environ.get("CACHE_FILE", str(Path(__file__).parent / "cache.json")))
+
+_cache: dict[str, tuple[float, Any]] = {}  # key -> (expires_at, value)
+
+
+def _cache_get(key: str) -> Any | None:
+    entry = _cache.get(key)
+    if entry is None:
+        return None
+    expires_at, value = entry
+    if time.time() > expires_at:
+        del _cache[key]
+        return None
+    return value
+
+
+def _cache_set(key: str, value: Any, ttl: float) -> None:
+    serializable = value.model_dump() if hasattr(value, "model_dump") else value
+    _cache[key] = (time.time() + ttl, serializable)
+    if CACHE_BACKEND == "disk":
+        _save_cache()
+
+
+def _save_cache() -> None:
+    with CACHE_FILE.open("w") as f:
+        json.dump({k: list(v) for k, v in _cache.items()}, f)
+
+
+def _load_cache() -> None:
+    if not CACHE_FILE.exists():
+        return
+    with CACHE_FILE.open() as f:
+        data = json.load(f)
+    now = time.time()
+    _cache.update({k: (v[0], v[1]) for k, v in data.items() if v[0] > now})
+
+
+if CACHE_BACKEND == "disk":
+    _load_cache()
 
 
 class VcsInfo(BaseModel):
@@ -233,17 +284,27 @@ async def get_downloads(purl: str):
     async with httpx.AsyncClient() as client:
         if purl.startswith("pkg:npm/"):
             name = urllib.parse.unquote(purl.removeprefix("pkg:npm/").rsplit("@", 1)[0])
+            cache_key = f"npm_downloads:{name}"
+            if (cached := _cache_get(cache_key)) is not None:
+                return cached
             r = await client.get(f"https://api.npmjs.org/downloads/point/last-week/{name}")
             if r.status_code != 200:
                 return DownloadStats(weekly_downloads=None)
-            return DownloadStats(weekly_downloads=r.json()["downloads"])
+            result = DownloadStats(weekly_downloads=r.json()["downloads"])
+            _cache_set(cache_key, result, CACHE_TTL["npm_downloads"])
+            return result
 
         elif purl.startswith("pkg:pypi/"):
             name = urllib.parse.unquote(purl.removeprefix("pkg:pypi/").split("@")[0])
+            cache_key = f"pypi_downloads:{name}"
+            if (cached := _cache_get(cache_key)) is not None:
+                return cached
             r = await client.get(f"https://pypistats.org/api/packages/{name}/recent")
             if r.status_code != 200:
                 return DownloadStats(weekly_downloads=None)
-            return DownloadStats(weekly_downloads=r.json()["data"]["last_week"])
+            result = DownloadStats(weekly_downloads=r.json()["data"]["last_week"])
+            _cache_set(cache_key, result, CACHE_TTL["pypi_downloads"])
+            return result
 
         return DownloadStats(weekly_downloads=None)
 
@@ -258,6 +319,9 @@ async def get_github_stars(url: str):
     if not m:
         return GitHubStars(stars=None)
     owner, repo = m.group(1), m.group(2)
+    cache_key = f"github_stars:{owner}/{repo}"
+    if (cached := _cache_get(cache_key)) is not None:
+        return cached
     async with httpx.AsyncClient() as client:
         r = await client.get(
             f"https://api.github.com/repos/{owner}/{repo}",
@@ -265,7 +329,9 @@ async def get_github_stars(url: str):
         )
         if r.status_code != 200:
             return GitHubStars(stars=None)
-        return GitHubStars(stars=r.json()["stargazers_count"])
+        result = GitHubStars(stars=r.json()["stargazers_count"])
+        _cache_set(cache_key, result, CACHE_TTL["github_stars"])
+        return result
 
 
 @app.get("/scan-result", response_model=OrtResult)
