@@ -27,14 +27,18 @@ const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
 
 const reviewFindings = computed(() =>
   allFindings.value.filter(
-    (f) => f.score < 100 || !currentPackage.value?.declared_licenses.includes(f.license),
+    (f) =>
+      f.score < 100 ||
+      !currentPackage.value?.declared_licenses_processed.spdx_expression.includes(f.license),
   ),
 )
 
 const hiddenFindings = computed(() =>
   allFindings.value.filter(
     (f) =>
-      f.score === 100 && (currentPackage.value?.declared_licenses.includes(f.license) ?? false),
+      f.score === 100 &&
+      (currentPackage.value?.declared_licenses_processed.spdx_expression.includes(f.license) ??
+        false),
   ),
 )
 
