@@ -392,11 +392,16 @@ def get_scan_result():
     provenance_map: dict[tuple[str, str], list[str]] = {}
     for prov in scanner_data.get("provenances", []):
         pkg_id = prov.get("id", "")
-        vcs = prov.get("package_provenance", {}).get("vcs_info", {})
+        pkg_prov = prov.get("package_provenance", {})
+        vcs = pkg_prov.get("vcs_info", {})
         url = vcs.get("url", "")
-        revision = prov.get("package_provenance", {}).get("resolved_revision", "") or vcs.get("revision", "")
+        revision = pkg_prov.get("resolved_revision", "") or vcs.get("revision", "")
         if url and revision:
             provenance_map.setdefault((url, revision), []).append(pkg_id)
+        else:
+            artifact_url = pkg_prov.get("source_artifact", {}).get("url", "")
+            if artifact_url:
+                provenance_map.setdefault(("artifact", artifact_url), []).append(pkg_id)
 
     id_to_pkg = {p.id: p for p in packages}
     for pkg_ids in provenance_map.values():
@@ -410,7 +415,12 @@ def get_scan_result():
         prov = sr["provenance"]
         vcs_url = prov.get("vcs_info", {}).get("url", "")
         revision = prov.get("resolved_revision", "")
-        pkg_ids = provenance_map.get((vcs_url, revision), [])
+        artifact_url = prov.get("source_artifact", {}).get("url", "")
+        pkg_ids = (
+            provenance_map.get((vcs_url, revision))
+            or provenance_map.get(("artifact", artifact_url))
+            or []
+        )
         findings = [
             LicenseFinding(
                 license=lf["license"],
