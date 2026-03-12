@@ -37,6 +37,7 @@ export interface Package {
   homepage_url: string
   vcs_url: string
   dependency_count: number
+  vcs_siblings: string[]
 }
 
 export interface LicenseLocation {

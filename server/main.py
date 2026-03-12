@@ -108,6 +108,7 @@ class Package(BaseModel):
     homepage_url: str = ""
     vcs_url: str = ""
     dependency_count: int = 0
+    vcs_siblings: list[str] = []
 
 
 class LicenseLocation(BaseModel):
@@ -388,41 +389,50 @@ def get_scan_result():
 
     scanner_data = data.get("scanner", {})
 
-    provenance_map: dict[tuple[str, str], str] = {}
+    provenance_map: dict[tuple[str, str], list[str]] = {}
     for prov in scanner_data.get("provenances", []):
         pkg_id = prov.get("id", "")
         vcs = prov.get("package_provenance", {}).get("vcs_info", {})
         url = vcs.get("url", "")
         revision = prov.get("package_provenance", {}).get("resolved_revision", "") or vcs.get("revision", "")
         if url and revision:
-            provenance_map[(url, revision)] = pkg_id
+            provenance_map.setdefault((url, revision), []).append(pkg_id)
+
+    id_to_pkg = {p.id: p for p in packages}
+    for pkg_ids in provenance_map.values():
+        if len(pkg_ids) > 1:
+            for pid in pkg_ids:
+                if pid in id_to_pkg:
+                    id_to_pkg[pid].vcs_siblings = [i for i in pkg_ids if i != pid]
 
     scan_results = []
     for sr in scanner_data.get("scan_results", []):
-        print(sr.get("summary", {}).get("licenses", []))
         prov = sr["provenance"]
         vcs_url = prov.get("vcs_info", {}).get("url", "")
         revision = prov.get("resolved_revision", "")
-        package_id = provenance_map.get((vcs_url, revision), "")
-        scan_results.append(PackageScanResult(
-            package_id=package_id,
-            provenance={
-                "vcs_info": prov.get("vcs_info", {}),
-                "resolved_revision": prov.get("resolved_revision", ""),
-            },
-            licenses=[
-                LicenseFinding(
-                    license=lf["license"],
-                    location=LicenseLocation(
-                        path=lf["location"]["path"],
-                        start_line=lf["location"]["start_line"],
-                        end_line=lf["location"]["end_line"],
-                    ),
-                    score=lf.get("score", 0.0),
-                )
-                for lf in sr.get("summary", {}).get("licenses", [])
-            ],
-        ))
+        pkg_ids = provenance_map.get((vcs_url, revision), [])
+        findings = [
+            LicenseFinding(
+                license=lf["license"],
+                location=LicenseLocation(
+                    path=lf["location"]["path"],
+                    start_line=lf["location"]["start_line"],
+                    end_line=lf["location"]["end_line"],
+                ),
+                score=lf.get("score", 0.0),
+            )
+            for lf in sr.get("summary", {}).get("licenses", [])
+        ]
+        provenance_dict = {
+            "vcs_info": prov.get("vcs_info", {}),
+            "resolved_revision": prov.get("resolved_revision", ""),
+        }
+        for pid in pkg_ids:
+            scan_results.append(PackageScanResult(
+                package_id=pid,
+                provenance=provenance_dict,
+                licenses=findings,
+            ))
 
     return OrtResult(
         repository=repository,

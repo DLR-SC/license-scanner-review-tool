@@ -92,6 +92,13 @@ watch(currentPackage, () => {
   showHidden.value = false
 })
 
+const vcsSiblings = computed(() => currentPackage.value?.vcs_siblings ?? [])
+
+function shortId(id: string): string {
+  const parts = id.split(':')
+  return parts.length >= 3 ? parts.slice(-3).join(':') : id
+}
+
 const weeklyDownloads = ref<number | null>(null)
 const downloadsLoading = ref(false)
 
@@ -225,6 +232,16 @@ watch(
         </tbody>
       </table>
       <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
+        <div
+          v-if="vcsSiblings.length"
+          class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+        >
+          This package originates from the same source repository as other packages in your
+          dependencies. Thus the license findings also apply to those packages:
+          <span v-for="(sibling, i) in vcsSiblings" :key="sibling" class="font-mono"
+            >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
+          >.
+        </div>
         <h2 class="text-base font-semibold">License findings</h2>
         <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
           No findings need review.
