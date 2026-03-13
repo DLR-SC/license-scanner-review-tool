@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # frontend
 
 This template should help get you started developing with Vue 3 in Vite.

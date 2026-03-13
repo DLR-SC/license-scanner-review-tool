@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'

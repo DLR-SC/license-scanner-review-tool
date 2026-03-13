@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+//
+// SPDX-License-Identifier: Apache-2.0
+
 import process from 'node:process'
 import { defineConfig, devices } from '@playwright/test'
 

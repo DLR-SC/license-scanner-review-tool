@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+//
+// SPDX-License-Identifier: Apache-2.0
+
 import { globalIgnores } from 'eslint/config'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
 import pluginVue from 'eslint-plugin-vue'

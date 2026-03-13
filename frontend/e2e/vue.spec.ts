@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+//
+// SPDX-License-Identifier: Apache-2.0
+
 import { test, expect } from '@playwright/test'
 
 // See here how to get started:
