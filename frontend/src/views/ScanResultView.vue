@@ -196,7 +196,16 @@ watch(
           </tr>
           <tr>
             <th class="border px-3 py-1.5 text-left">Homepage</th>
-            <td class="border px-3 py-1.5">{{ currentPackage.homepage_url }}</td>
+            <td class="border px-3 py-1.5">
+              <a
+                v-if="currentPackage.homepage_url"
+                :href="currentPackage.homepage_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline"
+                >{{ currentPackage.homepage_url }}</a
+              >
+            </td>
           </tr>
           <tr>
             <th class="border px-3 py-1.5 text-left">Authors</th>
