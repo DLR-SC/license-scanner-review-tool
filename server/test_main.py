@@ -104,7 +104,9 @@ def test_downloads_npm_scoped_package(httpx_mock: HTTPXMock):
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": 100}
-    assert httpx_mock.get_requests()[0].url.path == "/downloads/point/last-week/@scope/pkg"
+    assert (
+        httpx_mock.get_requests()[0].url.path == "/downloads/point/last-week/@scope/pkg"
+    )
 
 
 def test_downloads_npm_api_error_returns_none(httpx_mock: HTTPXMock):
@@ -242,10 +244,17 @@ def test_scan_result_package_fields(scan_result_file):
                         "purl": "pkg:maven/com.example/foo@1.0",
                         "authors": ["Alice", "Bob"],
                         "declared_licenses": ["Apache-2.0"],
-                        "declared_licenses_processed": {"spdx_expression": "Apache-2.0"},
+                        "declared_licenses_processed": {
+                            "spdx_expression": "Apache-2.0"
+                        },
                         "description": "A foo library",
                         "homepage_url": "https://example.com",
-                        "vcs_processed": {"url": "https://github.com/example/foo", "revision": "abc", "type": "Git", "path": ""},
+                        "vcs_processed": {
+                            "url": "https://github.com/example/foo",
+                            "revision": "abc",
+                            "type": "Git",
+                            "path": "",
+                        },
                     }
                 ],
                 "dependency_graphs": {},
@@ -283,7 +292,10 @@ def test_scan_result_vcs_provenance_linked(scan_result_file):
                 {
                     "id": "NPM::lodash:4.0.0",
                     "package_provenance": {
-                        "vcs_info": {"url": "https://github.com/lodash/lodash", "revision": ""},
+                        "vcs_info": {
+                            "url": "https://github.com/lodash/lodash",
+                            "revision": "",
+                        },
                         "resolved_revision": "deadbeef",
                     },
                 }
@@ -298,7 +310,11 @@ def test_scan_result_vcs_provenance_linked(scan_result_file):
                         "licenses": [
                             {
                                 "license": "MIT",
-                                "location": {"path": "LICENSE", "start_line": 1, "end_line": 1},
+                                "location": {
+                                    "path": "LICENSE",
+                                    "start_line": 1,
+                                    "end_line": 1,
+                                },
                                 "score": 100.0,
                             }
                         ]
@@ -350,7 +366,11 @@ def test_scan_result_source_artifact_provenance_linked(scan_result_file):
                         "licenses": [
                             {
                                 "license": "MIT",
-                                "location": {"path": "LICENSE", "start_line": 1, "end_line": 1},
+                                "location": {
+                                    "path": "LICENSE",
+                                    "start_line": 1,
+                                    "end_line": 1,
+                                },
                                 "score": 99.0,
                             }
                         ]
@@ -419,8 +439,12 @@ def test_scan_result_vcs_siblings(scan_result_file):
     assert response.status_code == 200
     body = response.json()
     pkgs = {p["id"]: p for p in body["packages"]}
-    assert pkgs["Maven:com.example:foo:1.0"]["vcs_siblings"] == ["Maven:com.example:bar:1.0"]
-    assert pkgs["Maven:com.example:bar:1.0"]["vcs_siblings"] == ["Maven:com.example:foo:1.0"]
+    assert pkgs["Maven:com.example:foo:1.0"]["vcs_siblings"] == [
+        "Maven:com.example:bar:1.0"
+    ]
+    assert pkgs["Maven:com.example:bar:1.0"]["vcs_siblings"] == [
+        "Maven:com.example:foo:1.0"
+    ]
     # one scan_result per package
     assert len(body["scan_results"]) == 2
     pkg_ids = {sr["package_id"] for sr in body["scan_results"]}
@@ -442,7 +466,10 @@ def test_scan_result_unmatched_provenance(scan_result_file):
                 {
                     "id": "NPM::lodash:4.0.0",
                     "package_provenance": {
-                        "vcs_info": {"url": "https://github.com/lodash/lodash", "revision": ""},
+                        "vcs_info": {
+                            "url": "https://github.com/lodash/lodash",
+                            "revision": "",
+                        },
                         "resolved_revision": "aabbccdd",
                     },
                 }

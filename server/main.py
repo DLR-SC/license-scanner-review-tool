@@ -25,13 +25,15 @@ SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
 ORT_OUT_PATH = Path(__file__).parent / "ort-out"
 
 CACHE_TTL: dict[str, float] = {
-    "github_stars":   3600,   # 1 hour
-    "npm_downloads":  86400,  # 24 hours
+    "github_stars": 3600,  # 1 hour
+    "npm_downloads": 86400,  # 24 hours
     "pypi_downloads": 86400,  # 24 hours
 }
 
 CACHE_BACKEND: str = os.environ.get("CACHE_BACKEND", "memory")  # "memory" | "disk"
-CACHE_FILE: Path = Path(os.environ.get("CACHE_FILE", str(Path(__file__).parent / "cache.json")))
+CACHE_FILE: Path = Path(
+    os.environ.get("CACHE_FILE", str(Path(__file__).parent / "cache.json"))
+)
 
 _cache: dict[str, tuple[float, Any]] = {}  # key -> (expires_at, value)
 
@@ -153,7 +155,9 @@ def compute_dependency_counts(
         packages_list = graph.get("packages", [])
 
         # node index → package-list index
-        node_to_pkg: dict[int, int] = {i: nodes[i].get("pkg") for i in range(len(nodes)) if "pkg" in nodes[i]}
+        node_to_pkg: dict[int, int] = {
+            i: nodes[i].get("pkg") for i in range(len(nodes)) if "pkg" in nodes[i]
+        }
 
         # node index → child node indices
         adjacency: dict[int, list[int]] = {}
@@ -164,7 +168,9 @@ def compute_dependency_counts(
                 adjacency.setdefault(src, []).append(dst)
 
         # package-list index → package id
-        pkg_index_to_id: dict[int, str] = {i: packages_list[i] for i in range(len(packages_list))}
+        pkg_index_to_id: dict[int, str] = {
+            i: packages_list[i] for i in range(len(packages_list))
+        }
 
         # package id → node index (for counting outgoing edges)
         pkg_id_to_node: dict[str, int] = {}
@@ -211,7 +217,9 @@ def compute_dependency_counts(
                     if child not in visited_nodes:
                         queue.append(child)
 
-            project_dep_counts[proj_id] = project_dep_counts.get(proj_id, 0) + len(pkg_indices)
+            project_dep_counts[proj_id] = project_dep_counts.get(proj_id, 0) + len(
+                pkg_indices
+            )
 
         # Package counts: direct children in adjacency
         for pkg in packages_raw:
@@ -255,7 +263,9 @@ class FileContent(BaseModel):
 
 
 @app.get("/file-content", response_model=FileContent)
-def get_file_content(package_id: str, path: str, start_line: int, end_line: int, context: int = 5):
+def get_file_content(
+    package_id: str, path: str, start_line: int, end_line: int, context: int = 5
+):
     pkg_dir = pkg_id_to_dir(package_id)
     if pkg_dir is None:
         return FileContent(lines=None)
@@ -288,7 +298,9 @@ async def get_downloads(purl: str):
             cache_key = f"npm_downloads:{name}"
             if (cached := _cache_get(cache_key)) is not None:
                 return cached
-            r = await client.get(f"https://api.npmjs.org/downloads/point/last-week/{name}")
+            r = await client.get(
+                f"https://api.npmjs.org/downloads/point/last-week/{name}"
+            )
             if r.status_code != 200:
                 return DownloadStats(weekly_downloads=None)
             result = DownloadStats(weekly_downloads=r.json()["downloads"])
@@ -338,7 +350,9 @@ async def get_github_stars(url: str):
 @app.get("/scan-result", response_model=OrtResult)
 def get_scan_result():
     if not SCAN_RESULT_PATH.exists():
-        raise HTTPException(status_code=404, detail=f"scan-result.yml not found at {SCAN_RESULT_PATH}")
+        raise HTTPException(
+            status_code=404, detail=f"scan-result.yml not found at {SCAN_RESULT_PATH}"
+        )
 
     with SCAN_RESULT_PATH.open() as f:
         data = yaml.safe_load(f)
@@ -357,7 +371,9 @@ def get_scan_result():
             definition_file_path=p.get("definition_file_path", ""),
             declared_licenses=p.get("declared_licenses", []),
             declared_licenses_processed=DeclaredLicensesProcessed(
-                spdx_expression=p.get("declared_licenses_processed", {}).get("spdx_expression", "")
+                spdx_expression=p.get("declared_licenses_processed", {}).get(
+                    "spdx_expression", ""
+                )
             ),
             scope_names=p.get("scope_names", []),
             homepage_url=p.get("homepage_url", ""),
@@ -372,11 +388,14 @@ def get_scan_result():
             authors=pkg.get("authors", []),
             declared_licenses=pkg.get("declared_licenses", []),
             declared_licenses_processed=DeclaredLicensesProcessed(
-                spdx_expression=pkg.get("declared_licenses_processed", {}).get("spdx_expression", "")
+                spdx_expression=pkg.get("declared_licenses_processed", {}).get(
+                    "spdx_expression", ""
+                )
             ),
             description=pkg.get("description", ""),
             homepage_url=pkg.get("homepage_url", ""),
-            vcs_url=pkg.get("vcs_processed", {}).get("url", "") or pkg.get("vcs", {}).get("url", ""),
+            vcs_url=pkg.get("vcs_processed", {}).get("url", "")
+            or pkg.get("vcs", {}).get("url", ""),
         )
         for pkg in analyzer_result.get("packages", [])
     ]
@@ -438,11 +457,13 @@ def get_scan_result():
             "resolved_revision": prov.get("resolved_revision", ""),
         }
         for pid in pkg_ids:
-            scan_results.append(PackageScanResult(
-                package_id=pid,
-                provenance=provenance_dict,
-                licenses=findings,
-            ))
+            scan_results.append(
+                PackageScanResult(
+                    package_id=pid,
+                    provenance=provenance_dict,
+                    licenses=findings,
+                )
+            )
 
     return OrtResult(
         repository=repository,
