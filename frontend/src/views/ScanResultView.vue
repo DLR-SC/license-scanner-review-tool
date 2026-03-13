@@ -17,6 +17,20 @@ watch(
 const currentPackage = computed(() => store.packages[currentIndex.value])
 const total = computed(() => store.packages.length)
 
+const registryUrl = computed(() => {
+  const purl = currentPackage.value?.purl
+  if (!purl) return null
+  if (purl.startsWith('pkg:npm/')) {
+    const name = decodeURIComponent(purl.slice('pkg:npm/'.length).split('@').slice(0, -1).join('@'))
+    return `https://www.npmjs.com/package/${name}`
+  }
+  if (purl.startsWith('pkg:pypi/')) {
+    const name = purl.slice('pkg:pypi/'.length).split('@')[0]
+    return `https://pypi.org/project/${name}/`
+  }
+  return null
+})
+
 const currentScanResult = computed(
   () => store.scanResults.find((sr) => sr.package_id === currentPackage.value?.id) ?? null,
 )
@@ -191,6 +205,19 @@ watch(
             <td class="border px-3 py-1.5">{{ currentPackage.purl }}</td>
           </tr>
           <tr>
+            <th class="border px-3 py-1.5 text-left">Registry</th>
+            <td class="border px-3 py-1.5">
+              <a
+                v-if="registryUrl"
+                :href="registryUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline"
+                >{{ registryUrl }}</a
+              >
+            </td>
+          </tr>
+          <tr>
             <th class="border px-3 py-1.5 text-left">Description</th>
             <td class="border px-3 py-1.5">{{ currentPackage.description }}</td>
           </tr>
@@ -204,6 +231,19 @@ watch(
                 rel="noopener noreferrer"
                 class="underline"
                 >{{ currentPackage.homepage_url }}</a
+              >
+            </td>
+          </tr>
+          <tr>
+            <th class="border px-3 py-1.5 text-left">VCS</th>
+            <td class="border px-3 py-1.5">
+              <a
+                v-if="currentPackage.vcs_url"
+                :href="currentPackage.vcs_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline"
+                >{{ currentPackage.vcs_url }}</a
               >
             </td>
           </tr>
