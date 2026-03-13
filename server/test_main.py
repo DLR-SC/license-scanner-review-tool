@@ -491,3 +491,138 @@ def test_scan_result_unmatched_provenance(scan_result_file):
 
     assert response.status_code == 200
     assert response.json()["scan_results"] == []
+
+
+# /file-content
+
+
+@pytest.fixture
+def file_content_dir(tmp_path):
+    original = main_module.ORT_OUT_PATH
+    main_module.ORT_OUT_PATH = tmp_path
+
+    def make_file(pkg_id: str, rel_path: str, content: str):
+        parts = pkg_id.split(":")
+        type_, namespace, name, version = (
+            parts[0],
+            parts[1] or "unknown",
+            parts[2],
+            parts[3],
+        )
+        pkg_dir = tmp_path / type_ / namespace / name / version
+        pkg_dir.mkdir(parents=True, exist_ok=True)
+        f = pkg_dir / rel_path
+        f.write_text(content)
+        return f
+
+    yield make_file
+    main_module.ORT_OUT_PATH = original
+
+
+def test_file_content_bad_package_id():
+    response = client.get(
+        "/file-content?package_id=NPM:lodash&path=LICENSE&start_line=1&end_line=1"
+    )
+    assert response.status_code == 200
+    assert response.json() == {"lines": None}
+
+
+def test_file_content_missing_package_dir(tmp_path):
+    original = main_module.ORT_OUT_PATH
+    main_module.ORT_OUT_PATH = tmp_path
+    try:
+        response = client.get(
+            "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
+        )
+        assert response.status_code == 200
+        assert response.json() == {"lines": None}
+    finally:
+        main_module.ORT_OUT_PATH = original
+
+
+def test_file_content_missing_file(file_content_dir):
+    file_content_dir("NPM::lodash:4.0.0", "README.md", "hello")
+    response = client.get(
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
+    )
+    assert response.status_code == 200
+    assert response.json() == {"lines": None}
+
+
+def test_file_content_returns_lines(file_content_dir):
+    content = "\n".join(f"line{i}" for i in range(1, 6))
+    file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
+    response = client.get(
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=2&end_line=3&context=0"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert len(lines) == 2
+    assert lines[0] == {"number": 2, "content": "line2", "highlighted": True}
+    assert lines[1] == {"number": 3, "content": "line3", "highlighted": True}
+
+
+def test_file_content_default_context(file_content_dir):
+    content = "\n".join(f"line{i}" for i in range(1, 11))
+    file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
+    response = client.get(
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=5&end_line=5"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert len(lines) == 10
+    assert lines[0]["number"] == 1
+    assert lines[9]["number"] == 10
+    highlighted = [l for l in lines if l["highlighted"]]
+    assert len(highlighted) == 1
+    assert highlighted[0]["number"] == 5
+
+
+def test_file_content_context_clamped_at_start(file_content_dir):
+    content = "\n".join(f"line{i}" for i in range(1, 4))
+    file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
+    response = client.get(
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context=10"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert len(lines) == 3
+    assert lines[0]["number"] == 1
+    highlighted = [l for l in lines if l["highlighted"]]
+    assert len(highlighted) == 1
+    assert highlighted[0]["number"] == 1
+
+
+def test_file_content_context_clamped_at_end(file_content_dir):
+    content = "\n".join(f"line{i}" for i in range(1, 4))
+    file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
+    response = client.get(
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=3&end_line=3&context=10"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert len(lines) == 3
+    assert lines[2]["number"] == 3
+    highlighted = [l for l in lines if l["highlighted"]]
+    assert len(highlighted) == 1
+    assert highlighted[0]["number"] == 3
+
+
+def test_file_content_empty_namespace(file_content_dir):
+    file_content_dir("PyPI::requests:2.0", "LICENSE", "MIT License")
+    response = client.get(
+        "/file-content?package_id=PyPI::requests:2.0&path=LICENSE&start_line=1&end_line=1&context=0"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert len(lines) == 1
+    assert lines[0] == {"number": 1, "content": "MIT License", "highlighted": True}
+
+
+def test_file_content_empty_file(file_content_dir):
+    file_content_dir("NPM::lodash:4.0.0", "LICENSE", "")
+    response = client.get(
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context=0"
+    )
+    assert response.status_code == 200
+    assert response.json() == {"lines": []}
