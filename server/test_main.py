@@ -1,7 +1,9 @@
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
 
+import main as main_module
 from main import app, _cache
 
 client = TestClient(app)
@@ -181,3 +183,284 @@ def test_downloads_unknown_purl_returns_none():
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": None}
+
+
+# /scan-result
+
+BASE = {
+    "repository": {"vcs": {}, "vcs_processed": {}},
+    "analyzer": {"result": {"projects": [], "packages": [], "dependency_graphs": {}}},
+    "scanner": {"provenances": [], "scan_results": []},
+}
+
+
+@pytest.fixture
+def scan_result_file(tmp_path):
+    original = main_module.SCAN_RESULT_PATH
+
+    def write(data: dict):
+        path = tmp_path / "scan-result.yml"
+        path.write_text(yaml.dump(data))
+        main_module.SCAN_RESULT_PATH = path
+        return path
+
+    yield write
+    main_module.SCAN_RESULT_PATH = original
+
+
+def test_scan_result_missing_file(tmp_path):
+    original = main_module.SCAN_RESULT_PATH
+    main_module.SCAN_RESULT_PATH = tmp_path / "nonexistent.yml"
+    try:
+        response = client.get("/scan-result")
+        assert response.status_code == 404
+    finally:
+        main_module.SCAN_RESULT_PATH = original
+
+
+def test_scan_result_empty(scan_result_file):
+    scan_result_file(BASE)
+
+    response = client.get("/scan-result")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["packages"] == []
+    assert body["projects"] == []
+    assert body["scan_results"] == []
+
+
+def test_scan_result_package_fields(scan_result_file):
+    data = {
+        **BASE,
+        "analyzer": {
+            "result": {
+                "projects": [],
+                "packages": [
+                    {
+                        "id": "Maven:com.example:foo:1.0",
+                        "purl": "pkg:maven/com.example/foo@1.0",
+                        "authors": ["Alice", "Bob"],
+                        "declared_licenses": ["Apache-2.0"],
+                        "declared_licenses_processed": {"spdx_expression": "Apache-2.0"},
+                        "description": "A foo library",
+                        "homepage_url": "https://example.com",
+                        "vcs_processed": {"url": "https://github.com/example/foo", "revision": "abc", "type": "Git", "path": ""},
+                    }
+                ],
+                "dependency_graphs": {},
+            }
+        },
+    }
+    scan_result_file(data)
+
+    response = client.get("/scan-result")
+
+    assert response.status_code == 200
+    pkg = response.json()["packages"][0]
+    assert pkg["id"] == "Maven:com.example:foo:1.0"
+    assert pkg["purl"] == "pkg:maven/com.example/foo@1.0"
+    assert pkg["authors"] == ["Alice", "Bob"]
+    assert pkg["declared_licenses"] == ["Apache-2.0"]
+    assert pkg["declared_licenses_processed"]["spdx_expression"] == "Apache-2.0"
+    assert pkg["description"] == "A foo library"
+    assert pkg["homepage_url"] == "https://example.com"
+    assert pkg["vcs_url"] == "https://github.com/example/foo"
+
+
+def test_scan_result_vcs_provenance_linked(scan_result_file):
+    data = {
+        **BASE,
+        "analyzer": {
+            "result": {
+                "projects": [],
+                "packages": [{"id": "NPM::lodash:4.0.0"}],
+                "dependency_graphs": {},
+            }
+        },
+        "scanner": {
+            "provenances": [
+                {
+                    "id": "NPM::lodash:4.0.0",
+                    "package_provenance": {
+                        "vcs_info": {"url": "https://github.com/lodash/lodash", "revision": ""},
+                        "resolved_revision": "deadbeef",
+                    },
+                }
+            ],
+            "scan_results": [
+                {
+                    "provenance": {
+                        "vcs_info": {"url": "https://github.com/lodash/lodash"},
+                        "resolved_revision": "deadbeef",
+                    },
+                    "summary": {
+                        "licenses": [
+                            {
+                                "license": "MIT",
+                                "location": {"path": "LICENSE", "start_line": 1, "end_line": 1},
+                                "score": 100.0,
+                            }
+                        ]
+                    },
+                }
+            ],
+        },
+    }
+    scan_result_file(data)
+
+    response = client.get("/scan-result")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["scan_results"]) == 1
+    sr = body["scan_results"][0]
+    assert sr["package_id"] == "NPM::lodash:4.0.0"
+    assert sr["licenses"][0]["license"] == "MIT"
+    assert sr["licenses"][0]["location"]["path"] == "LICENSE"
+    assert sr["licenses"][0]["score"] == 100.0
+
+
+def test_scan_result_source_artifact_provenance_linked(scan_result_file):
+    artifact_url = "https://registry.npmjs.org/lodash/-/lodash-4.0.0.tgz"
+    data = {
+        **BASE,
+        "analyzer": {
+            "result": {
+                "projects": [],
+                "packages": [{"id": "NPM::lodash:4.0.0"}],
+                "dependency_graphs": {},
+            }
+        },
+        "scanner": {
+            "provenances": [
+                {
+                    "id": "NPM::lodash:4.0.0",
+                    "package_provenance": {
+                        "source_artifact": {"url": artifact_url},
+                    },
+                }
+            ],
+            "scan_results": [
+                {
+                    "provenance": {
+                        "source_artifact": {"url": artifact_url},
+                    },
+                    "summary": {
+                        "licenses": [
+                            {
+                                "license": "MIT",
+                                "location": {"path": "LICENSE", "start_line": 1, "end_line": 1},
+                                "score": 99.0,
+                            }
+                        ]
+                    },
+                }
+            ],
+        },
+    }
+    scan_result_file(data)
+
+    response = client.get("/scan-result")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["scan_results"]) == 1
+    assert body["scan_results"][0]["package_id"] == "NPM::lodash:4.0.0"
+
+
+def test_scan_result_vcs_siblings(scan_result_file):
+    vcs_url = "https://github.com/example/mono"
+    revision = "cafebabe"
+    data = {
+        **BASE,
+        "analyzer": {
+            "result": {
+                "projects": [],
+                "packages": [
+                    {"id": "Maven:com.example:foo:1.0"},
+                    {"id": "Maven:com.example:bar:1.0"},
+                ],
+                "dependency_graphs": {},
+            }
+        },
+        "scanner": {
+            "provenances": [
+                {
+                    "id": "Maven:com.example:foo:1.0",
+                    "package_provenance": {
+                        "vcs_info": {"url": vcs_url, "revision": ""},
+                        "resolved_revision": revision,
+                    },
+                },
+                {
+                    "id": "Maven:com.example:bar:1.0",
+                    "package_provenance": {
+                        "vcs_info": {"url": vcs_url, "revision": ""},
+                        "resolved_revision": revision,
+                    },
+                },
+            ],
+            "scan_results": [
+                {
+                    "provenance": {
+                        "vcs_info": {"url": vcs_url},
+                        "resolved_revision": revision,
+                    },
+                    "summary": {"licenses": []},
+                }
+            ],
+        },
+    }
+    scan_result_file(data)
+
+    response = client.get("/scan-result")
+
+    assert response.status_code == 200
+    body = response.json()
+    pkgs = {p["id"]: p for p in body["packages"]}
+    assert pkgs["Maven:com.example:foo:1.0"]["vcs_siblings"] == ["Maven:com.example:bar:1.0"]
+    assert pkgs["Maven:com.example:bar:1.0"]["vcs_siblings"] == ["Maven:com.example:foo:1.0"]
+    # one scan_result per package
+    assert len(body["scan_results"]) == 2
+    pkg_ids = {sr["package_id"] for sr in body["scan_results"]}
+    assert pkg_ids == {"Maven:com.example:foo:1.0", "Maven:com.example:bar:1.0"}
+
+
+def test_scan_result_unmatched_provenance(scan_result_file):
+    data = {
+        **BASE,
+        "analyzer": {
+            "result": {
+                "projects": [],
+                "packages": [{"id": "NPM::lodash:4.0.0"}],
+                "dependency_graphs": {},
+            }
+        },
+        "scanner": {
+            "provenances": [
+                {
+                    "id": "NPM::lodash:4.0.0",
+                    "package_provenance": {
+                        "vcs_info": {"url": "https://github.com/lodash/lodash", "revision": ""},
+                        "resolved_revision": "aabbccdd",
+                    },
+                }
+            ],
+            "scan_results": [
+                {
+                    "provenance": {
+                        "vcs_info": {"url": "https://github.com/lodash/lodash"},
+                        "resolved_revision": "00000000",  # different revision — no match
+                    },
+                    "summary": {"licenses": []},
+                }
+            ],
+        },
+    }
+    scan_result_file(data)
+
+    response = client.get("/scan-result")
+
+    assert response.status_code == 200
+    assert response.json()["scan_results"] == []
