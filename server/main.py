@@ -32,7 +32,10 @@ CACHE_TTL: dict[str, float] = {
     "github_stars": 3600,  # 1 hour
     "npm_downloads": 86400,  # 24 hours
     "pypi_downloads": 86400,  # 24 hours
+    "license_text": 86400 * 30,  # 30 days
 }
+
+SPDX_ID_RE = re.compile(r"^[A-Za-z0-9\-\.+]+$")
 
 CACHE_BACKEND: str = os.environ.get("CACHE_BACKEND", "memory")  # "memory" | "disk"
 CACHE_FILE: Path = Path(
@@ -349,6 +352,30 @@ async def get_github_stars(url: str):
         result = GitHubStars(stars=r.json()["stargazers_count"])
         _cache_set(cache_key, result, CACHE_TTL["github_stars"])
         return result
+
+
+class LicenseText(BaseModel):
+    text: str | None
+
+
+@app.get("/license-text", response_model=LicenseText)
+async def get_license_text(license: str):
+    if not SPDX_ID_RE.match(license):
+        return LicenseText(text=None)
+    cache_key = f"license_text:{license}"
+    if (cached := _cache_get(cache_key)) is not None:
+        return cached
+    url = f"https://raw.githubusercontent.com/spdx/license-list-data/main/text/{license}.txt"
+    async with httpx.AsyncClient() as client:
+        try:
+            r = await client.get(url)
+        except httpx.RequestError:
+            return LicenseText(text=None)
+    if r.status_code != 200:
+        return LicenseText(text=None)
+    result = LicenseText(text=r.text)
+    _cache_set(cache_key, result, CACHE_TTL["license_text"])
+    return result
 
 
 @app.get("/scan-result", response_model=OrtResult)

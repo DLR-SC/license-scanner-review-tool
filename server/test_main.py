@@ -630,3 +630,52 @@ def test_file_content_empty_file(file_content_dir):
     )
     assert response.status_code == 200
     assert response.json() == {"lines": []}
+
+
+# /license-text
+
+
+def test_license_text_returns_text(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://raw.githubusercontent.com/spdx/license-list-data/main/text/MIT.txt",
+        text="MIT License\n\nPermission is hereby granted...",
+    )
+
+    response = client.get("/license-text?license=MIT")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "MIT License\n\nPermission is hereby granted..."}
+    assert len(httpx_mock.get_requests()) == 1
+
+
+def test_license_text_unknown_license_returns_none(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://raw.githubusercontent.com/spdx/license-list-data/main/text/NOT-A-LICENSE.txt",
+        status_code=404,
+    )
+
+    response = client.get("/license-text?license=NOT-A-LICENSE")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": None}
+
+
+def test_license_text_invalid_id_returns_none_without_fetching(httpx_mock: HTTPXMock):
+    response = client.get("/license-text?license=../etc/passwd")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": None}
+    assert len(httpx_mock.get_requests()) == 0
+
+
+def test_license_text_cached_on_second_call(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://raw.githubusercontent.com/spdx/license-list-data/main/text/Apache-2.0.txt",
+        text="Apache License\nVersion 2.0",
+    )
+
+    client.get("/license-text?license=Apache-2.0")
+    response = client.get("/license-text?license=Apache-2.0")
+
+    assert response.json() == {"text": "Apache License\nVersion 2.0"}
+    assert len(httpx_mock.get_requests()) == 1

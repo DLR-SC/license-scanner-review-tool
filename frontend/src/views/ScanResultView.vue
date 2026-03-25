@@ -134,11 +134,85 @@ async function loadFinding(finding: LicenseFinding) {
   }
 }
 
+/**
+ * Returns true when a finding likely covers a whole license text rather than
+ * a single-line header — i.e. the finding spans more than 3 lines.
+ */
+function isWholeLicenseText(f: LicenseFinding): boolean {
+  return f.location.end_line - f.location.start_line > 3
+}
+
+type DiffLine = { type: 'equal' | 'added' | 'removed'; content: string }
+
+function computeDiff(canonical: string[], found: string[]): DiffLine[] {
+  const m = canonical.length
+  const n = found.length
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        canonical[i - 1] === found[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+  const result: DiffLine[] = []
+  let i = m,
+    j = n
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && canonical[i - 1] === found[j - 1]) {
+      result.push({ type: 'equal', content: canonical[i - 1] })
+      i--
+      j--
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.push({ type: 'added', content: found[j - 1] })
+      j--
+    } else {
+      result.push({ type: 'removed', content: canonical[i - 1] })
+      i--
+    }
+  }
+  return result.reverse()
+}
+
+const canonicalText = ref<string | null>(null)
+const canonicalLoading = ref(false)
+
+async function loadCanonicalText(license: string) {
+  canonicalText.value = null
+  canonicalLoading.value = true
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(`/license-text?license=${encodeURIComponent(license)}`, base).toString(),
+    )
+    if (res.ok) {
+      const data = await res.json()
+      canonicalText.value = data.text
+    }
+  } finally {
+    canonicalLoading.value = false
+  }
+}
+
+const diffLines = computed<DiffLine[] | null>(() => {
+  if (!canonicalText.value || !fileContent.value) return null
+  const found = fileContent.value.filter((l) => l.highlighted).map((l) => l.content)
+  const canonical = canonicalText.value.split('\n')
+  return computeDiff(canonical, found)
+})
+
 watch(
   currentFinding,
   (finding) => {
-    if (finding) loadFinding(finding)
-    else fileContent.value = null
+    if (finding) {
+      loadFinding(finding)
+      if (isWholeLicenseText(finding)) loadCanonicalText(finding.license)
+      else canonicalText.value = null
+    } else {
+      fileContent.value = null
+      canonicalText.value = null
+    }
   },
   { immediate: true },
 )
@@ -146,6 +220,7 @@ watch(
 watch(currentPackage, () => {
   findingIndex.value = 0
   fileContent.value = null
+  canonicalText.value = null
   showHidden.value = false
 })
 
@@ -378,6 +453,22 @@ watch(
               v-else
               class="overflow-x-auto text-xs"
             ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
+          </div>
+          <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
+            Loading canonical text…
+          </div>
+          <div v-else-if="diffLines" class="border rounded mt-2">
+            <div class="px-3 py-2 text-sm border-b text-gray-500">
+              Diff vs. canonical
+              <span class="font-mono">{{ currentFinding.license }}</span>
+            </div>
+            <pre class="overflow-x-auto text-xs"><template v-for="(line, i) in diffLines" :key="i"><div
+                :class="{
+                  'bg-green-100 text-green-800': line.type === 'added',
+                  'bg-red-100 text-red-700': line.type === 'removed',
+                }"
+                class="px-3 py-px"
+              ><span class="select-none mr-3 inline-block w-4">{{ line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ' }}</span>{{ line.content }}</div></template></pre>
           </div>
         </template>
         <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
