@@ -11,6 +11,36 @@ import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'
 const store = useScanResultStore()
 onMounted(() => store.fetchScanResult())
 
+const MANIFEST_FILES = new Set([
+  'pyproject.toml',
+  'setup.py',
+  'setup.cfg',
+  'cargo.toml',
+  'package.json',
+  'pom.xml',
+  'build.gradle',
+  'composer.json',
+  'go.mod',
+  'go.sum',
+])
+const LICENSE_FILE_RE = /^(license|copying|notice|readme)/i
+
+/**
+ * Returns a sort priority tier for a license finding (lower = shown first).
+ *
+ * - 0: Project manifest files (e.g. pyproject.toml, package.json) — most authoritative
+ * - 1: License, notice, and readme files — authoritative human-readable declarations
+ * - 2: Undeclared license — license not present in the package's SPDX expression
+ * - 3: Everything else
+ */
+function findingTier(f: LicenseFinding, spdx: string): number {
+  const base = f.location.path.split('/').at(-1)?.toLowerCase() ?? ''
+  if (base.endsWith('.gemspec') || MANIFEST_FILES.has(base)) return 0
+  if (LICENSE_FILE_RE.test(base)) return 1
+  if (!spdx.includes(f.license)) return 2
+  return 3
+}
+
 const currentIndex = ref(0)
 
 watch(
@@ -45,13 +75,16 @@ const findingIndex = ref(0)
 
 const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
 
-const reviewFindings = computed(() =>
-  allFindings.value.filter(
-    (f) =>
-      f.score < 100 ||
-      !currentPackage.value?.declared_licenses_processed.spdx_expression.includes(f.license),
-  ),
-)
+const reviewFindings = computed(() => {
+  const spdx = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
+  return allFindings.value
+    .filter((f) => f.score < 100 || !spdx.includes(f.license))
+    .slice()
+    .sort((a, b) => {
+      const tierDiff = findingTier(a, spdx) - findingTier(b, spdx)
+      return tierDiff !== 0 ? tierDiff : b.score - a.score
+    })
+})
 
 const hiddenFindings = computed(() =>
   allFindings.value.filter(
