@@ -33,6 +33,7 @@ CACHE_TTL: dict[str, float] = {
     "npm_downloads": 86400,  # 24 hours
     "pypi_downloads": 86400,  # 24 hours
     "license_text": 86400 * 30,  # 30 days
+    "scancode_index": 86400 * 7,  # 7 days
 }
 
 SPDX_ID_RE = re.compile(r"^[A-Za-z0-9\-\.+]+$")
@@ -354,6 +355,32 @@ async def get_github_stars(url: str):
         return result
 
 
+async def _get_spdx_to_key_map(client: httpx.AsyncClient) -> dict[str, str]:
+    cache_key = "scancode_index"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        r = await client.get("https://scancode-licensedb.aboutcode.org/index.json")
+    except httpx.RequestError:
+        return {}
+    if r.status_code != 200:
+        return {}
+    mapping: dict[str, str] = {}
+    for entry in r.json():
+        key = entry.get("license_key")
+        if not key:
+            continue
+        spdx = entry.get("spdx_license_key")
+        if spdx:
+            mapping[spdx] = key
+        for alt in entry.get("other_spdx_license_keys") or []:
+            if alt and not alt.startswith("LicenseRef-"):
+                mapping[alt] = key
+    _cache_set(cache_key, mapping, CACHE_TTL["scancode_index"])
+    return mapping
+
+
 class LicenseText(BaseModel):
     text: str | None
 
@@ -365,8 +392,12 @@ async def get_license_text(license: str):
     cache_key = f"license_text:{license}"
     if (cached := _cache_get(cache_key)) is not None:
         return cached
-    url = f"https://raw.githubusercontent.com/spdx/license-list-data/main/text/{license}.txt"
     async with httpx.AsyncClient() as client:
+        spdx_map = await _get_spdx_to_key_map(client)
+        license_key = spdx_map.get(license)
+        if license_key is None:
+            return LicenseText(text=None)
+        url = f"https://scancode-licensedb.aboutcode.org/{license_key}.LICENSE"
         try:
             r = await client.get(url)
         except httpx.RequestError:
