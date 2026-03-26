@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { diffWords } from 'diff'
+import type { Change } from 'diff'
 import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'
 
 const store = useScanResultStore()
@@ -142,39 +144,6 @@ function isWholeLicenseText(f: LicenseFinding): boolean {
   return f.location.end_line - f.location.start_line > 3
 }
 
-type DiffLine = { type: 'equal' | 'added' | 'removed'; content: string }
-
-function computeDiff(canonical: string[], found: string[]): DiffLine[] {
-  const m = canonical.length
-  const n = found.length
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] =
-        canonical[i - 1] === found[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1])
-    }
-  }
-  const result: DiffLine[] = []
-  let i = m,
-    j = n
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && canonical[i - 1] === found[j - 1]) {
-      result.push({ type: 'equal', content: canonical[i - 1] })
-      i--
-      j--
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.push({ type: 'added', content: found[j - 1] })
-      j--
-    } else {
-      result.push({ type: 'removed', content: canonical[i - 1] })
-      i--
-    }
-  }
-  return result.reverse()
-}
-
 const canonicalText = ref<string | null>(null)
 const canonicalLoading = ref(false)
 
@@ -195,11 +164,13 @@ async function loadCanonicalText(license: string) {
   }
 }
 
-const diffLines = computed<DiffLine[] | null>(() => {
+const wordDiff = computed<Change[] | null>(() => {
   if (!canonicalText.value || !fileContent.value) return null
-  const found = fileContent.value.filter((l) => l.highlighted).map((l) => l.content)
-  const canonical = canonicalText.value.split('\n')
-  return computeDiff(canonical, found)
+  const found = fileContent.value
+    .filter((l) => l.highlighted)
+    .map((l) => l.content)
+    .join('\n')
+  return diffWords(canonicalText.value, found)
 })
 
 watch(
@@ -457,18 +428,15 @@ watch(
           <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
             Loading canonical text…
           </div>
-          <div v-else-if="diffLines" class="border rounded mt-2">
+          <div v-else-if="wordDiff" class="border rounded mt-2">
             <div class="px-3 py-2 text-sm border-b text-gray-500">
               Diff vs. canonical
               <span class="font-mono">{{ currentFinding.license }}</span>
             </div>
-            <pre class="overflow-x-auto text-xs"><template v-for="(line, i) in diffLines" :key="i"><div
-                :class="{
-                  'bg-green-100 text-green-800': line.type === 'added',
-                  'bg-red-100 text-red-700': line.type === 'removed',
-                }"
-                class="px-3 py-px"
-              ><span class="select-none mr-3 inline-block w-4">{{ line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ' }}</span>{{ line.content }}</div></template></pre>
+            <pre class="overflow-x-auto text-xs px-3 py-2"><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
+                'bg-green-100 text-green-800': change.added,
+                'bg-red-100 text-red-700 line-through': change.removed,
+              }">{{ change.value }}</span></template></pre>
           </div>
         </template>
         <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
