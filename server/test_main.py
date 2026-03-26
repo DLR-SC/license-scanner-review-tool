@@ -630,3 +630,87 @@ def test_file_content_empty_file(file_content_dir):
     )
     assert response.status_code == 200
     assert response.json() == {"lines": []}
+
+
+# /license-text
+
+INDEX_MIT = [{"license_key": "mit", "spdx_license_key": "MIT", "other_spdx_license_keys": []}]
+INDEX_APACHE = [
+    {"license_key": "apache-2.0", "spdx_license_key": "Apache-2.0", "other_spdx_license_keys": []}
+]
+INDEX_BSD = [
+    {"license_key": "bsd-new", "spdx_license_key": "BSD-3-Clause", "other_spdx_license_keys": []}
+]
+INDEX_EMPTY: list = []
+
+
+def test_license_text_returns_text(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/index.json",
+        json=INDEX_MIT,
+    )
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/mit.LICENSE",
+        text="MIT License\n\nPermission is hereby granted...",
+    )
+
+    response = client.get("/license-text?license=MIT")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "MIT License\n\nPermission is hereby granted..."}
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_license_text_unknown_license_returns_none(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/index.json",
+        json=INDEX_EMPTY,
+    )
+
+    response = client.get("/license-text?license=NOT-A-LICENSE")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": None}
+    assert len(httpx_mock.get_requests()) == 1
+
+
+def test_license_text_invalid_id_returns_none_without_fetching(httpx_mock: HTTPXMock):
+    response = client.get("/license-text?license=../etc/passwd")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": None}
+    assert len(httpx_mock.get_requests()) == 0
+
+
+def test_license_text_cached_on_second_call(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/index.json",
+        json=INDEX_APACHE,
+    )
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/apache-2.0.LICENSE",
+        text="Apache License\nVersion 2.0",
+    )
+
+    client.get("/license-text?license=Apache-2.0")
+    response = client.get("/license-text?license=Apache-2.0")
+
+    assert response.json() == {"text": "Apache License\nVersion 2.0"}
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/index.json",
+        json=INDEX_BSD,
+    )
+    httpx_mock.add_response(
+        url="https://scancode-licensedb.aboutcode.org/bsd-new.LICENSE",
+        text="BSD 3-Clause License\n\nRedistribution and use...",
+    )
+
+    response = client.get("/license-text?license=BSD-3-Clause")
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "BSD 3-Clause License\n\nRedistribution and use..."}
+    assert httpx_mock.get_requests()[1].url.path == "/bsd-new.LICENSE"

@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { diffWords } from 'diff'
+import type { Change } from 'diff'
 import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'
 
 const store = useScanResultStore()
@@ -134,11 +136,54 @@ async function loadFinding(finding: LicenseFinding) {
   }
 }
 
+/**
+ * Returns true when a finding likely covers a whole license text rather than
+ * a single-line header — i.e. the finding spans more than 3 lines.
+ */
+function isWholeLicenseText(f: LicenseFinding): boolean {
+  return f.location.end_line - f.location.start_line > 3
+}
+
+const canonicalText = ref<string | null>(null)
+const canonicalLoading = ref(false)
+
+async function loadCanonicalText(license: string) {
+  canonicalText.value = null
+  canonicalLoading.value = true
+  try {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(`/license-text?license=${encodeURIComponent(license)}`, base).toString(),
+    )
+    if (res.ok) {
+      const data = await res.json()
+      canonicalText.value = data.text
+    }
+  } finally {
+    canonicalLoading.value = false
+  }
+}
+
+const wordDiff = computed<Change[] | null>(() => {
+  if (!canonicalText.value || !fileContent.value) return null
+  const found = fileContent.value
+    .filter((l) => l.highlighted)
+    .map((l) => l.content)
+    .join('\n')
+  return diffWords(canonicalText.value, found)
+})
+
 watch(
   currentFinding,
   (finding) => {
-    if (finding) loadFinding(finding)
-    else fileContent.value = null
+    if (finding) {
+      loadFinding(finding)
+      if (isWholeLicenseText(finding)) loadCanonicalText(finding.license)
+      else canonicalText.value = null
+    } else {
+      fileContent.value = null
+      canonicalText.value = null
+    }
   },
   { immediate: true },
 )
@@ -146,6 +191,7 @@ watch(
 watch(currentPackage, () => {
   findingIndex.value = 0
   fileContent.value = null
+  canonicalText.value = null
   showHidden.value = false
 })
 
@@ -378,6 +424,19 @@ watch(
               v-else
               class="overflow-x-auto text-xs"
             ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
+          </div>
+          <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
+            Loading canonical text…
+          </div>
+          <div v-else-if="wordDiff" class="border rounded mt-2">
+            <div class="px-3 py-2 text-sm border-b text-gray-500">
+              Diff vs. canonical
+              <span class="font-mono">{{ currentFinding.license }}</span>
+            </div>
+            <pre class="overflow-x-auto text-xs px-3 py-2"><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
+                'bg-green-100 text-green-800': change.added,
+                'bg-red-100 text-red-700 line-through': change.removed,
+              }">{{ change.value }}</span></template></pre>
           </div>
         </template>
         <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
