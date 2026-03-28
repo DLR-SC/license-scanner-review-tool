@@ -65,6 +65,17 @@ export interface PackageScanResult {
   licenses: LicenseFinding[]
 }
 
+export interface PathExclude {
+  pattern: string
+  reason: string
+  comment: string
+}
+
+export interface PackagePathExcludes {
+  package_id: string
+  path_excludes: PathExclude[]
+}
+
 export interface OrtResult {
   repository: Repository
   projects: Project[]
@@ -79,6 +90,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
   const scanResults = ref<PackageScanResult[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const pathExcludes = ref<Record<string, PathExclude[]>>({})
 
   async function fetchScanResult() {
     loading.value = true
@@ -102,5 +114,56 @@ export const useScanResultStore = defineStore('scanResult', () => {
     }
   }
 
-  return { repository, projects, packages, scanResults, loading, error, fetchScanResult }
+  async function fetchPathExcludes(packageId: string) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(`/path-excludes?package_id=${encodeURIComponent(packageId)}`, base).toString(),
+    )
+    if (res.ok) {
+      const data: PackagePathExcludes = await res.json()
+      pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
+    }
+  }
+
+  async function addPathExclude(packageId: string, exclude: PathExclude) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(new URL('/path-excludes', base).toString(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package_id: packageId, ...exclude }),
+    })
+    if (res.ok) {
+      const data: PackagePathExcludes = await res.json()
+      pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
+    }
+  }
+
+  async function removePathExclude(packageId: string, pattern: string) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(
+        `/path-excludes?package_id=${encodeURIComponent(packageId)}&pattern=${encodeURIComponent(pattern)}`,
+        base,
+      ).toString(),
+      { method: 'DELETE' },
+    )
+    if (res.ok) {
+      const data: PackagePathExcludes = await res.json()
+      pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
+    }
+  }
+
+  return {
+    repository,
+    projects,
+    packages,
+    scanResults,
+    loading,
+    error,
+    pathExcludes,
+    fetchScanResult,
+    fetchPathExcludes,
+    addPathExclude,
+    removePathExclude,
+  }
 })

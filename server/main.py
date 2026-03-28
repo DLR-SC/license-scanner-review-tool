@@ -21,12 +21,13 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
 SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
 ORT_OUT_PATH = Path(__file__).parent / "ort-out"
+PKG_CONFIG_PATH = Path(__file__).parent / "ort-out" / "package-configurations.yml"
 
 CACHE_TTL: dict[str, float] = {
     "github_stars": 3600,  # 1 hour
@@ -258,6 +259,39 @@ def pkg_id_to_dir(pkg_id: str) -> Path | None:
     if not namespace:
         namespace = "unknown"
     return ORT_OUT_PATH / type_ / namespace / name / version
+
+
+class PathExclude(BaseModel):
+    pattern: str
+    reason: str = ""
+    comment: str = ""
+
+
+class PackagePathExcludes(BaseModel):
+    package_id: str
+    path_excludes: list[PathExclude]
+
+
+class AddPathExcludeRequest(BaseModel):
+    package_id: str
+    pattern: str
+    reason: str = ""
+    comment: str = ""
+
+
+def _read_pkg_configs() -> list[dict]:
+    if not PKG_CONFIG_PATH.exists():
+        return []
+    with PKG_CONFIG_PATH.open() as f:
+        data = yaml.safe_load(f)
+    return data or []
+
+
+def _write_pkg_configs(configs: list[dict]) -> None:
+    PKG_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with PKG_CONFIG_PATH.open("w") as f:
+        yaml.dump(configs, f, default_flow_style=False, allow_unicode=True)
+
 
 
 class FileContentLine(BaseModel):
@@ -538,4 +572,54 @@ def get_scan_result():
         projects=projects,
         packages=packages,
         scan_results=scan_results,
+    )
+
+
+@app.get("/path-excludes", response_model=PackagePathExcludes)
+def get_path_excludes(package_id: str):
+    configs = _read_pkg_configs()
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        return PackagePathExcludes(package_id=package_id, path_excludes=[])
+    excludes = [
+        PathExclude(
+            pattern=e.get("pattern", ""),
+            reason=e.get("reason", ""),
+            comment=e.get("comment", ""),
+        )
+        for e in entry.get("path_excludes") or []
+    ]
+    return PackagePathExcludes(package_id=package_id, path_excludes=excludes)
+
+
+@app.put("/path-excludes", response_model=PackagePathExcludes)
+def add_path_exclude(req: AddPathExcludeRequest):
+    configs = _read_pkg_configs()
+    entry = next((c for c in configs if c.get("id") == req.package_id), None)
+    if entry is None:
+        entry = {"id": req.package_id, "path_excludes": []}
+        configs.append(entry)
+    excludes: list[dict] = entry.setdefault("path_excludes", [])
+    if not any(e.get("pattern") == req.pattern for e in excludes):
+        excludes.append({"pattern": req.pattern, "reason": req.reason, "comment": req.comment})
+    _write_pkg_configs(configs)
+    return PackagePathExcludes(
+        package_id=req.package_id,
+        path_excludes=[PathExclude(**e) for e in excludes],
+    )
+
+
+@app.delete("/path-excludes", response_model=PackagePathExcludes)
+def remove_path_exclude(package_id: str, pattern: str):
+    configs = _read_pkg_configs()
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        return PackagePathExcludes(package_id=package_id, path_excludes=[])
+    entry["path_excludes"] = [
+        e for e in entry.get("path_excludes") or [] if e.get("pattern") != pattern
+    ]
+    _write_pkg_configs(configs)
+    return PackagePathExcludes(
+        package_id=package_id,
+        path_excludes=[PathExclude(**e) for e in entry["path_excludes"]],
     )

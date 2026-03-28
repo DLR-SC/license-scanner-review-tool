@@ -699,6 +699,122 @@ def test_license_text_cached_on_second_call(httpx_mock: HTTPXMock):
     assert len(httpx_mock.get_requests()) == 2
 
 
+# /path-excludes
+
+
+@pytest.fixture
+def pkg_config_file(tmp_path):
+    original = main_module.PKG_CONFIG_PATH
+
+    def write(data: list):
+        path = tmp_path / "package-configurations.yml"
+        path.write_text(yaml.dump(data))
+        main_module.PKG_CONFIG_PATH = path
+
+    main_module.PKG_CONFIG_PATH = tmp_path / "package-configurations.yml"
+    yield write
+    main_module.PKG_CONFIG_PATH = original
+
+
+def test_path_excludes_missing_file_returns_empty(pkg_config_file):
+    response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
+    assert response.status_code == 200
+    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "path_excludes": []}
+
+
+def test_path_excludes_populated_file_returns_list(pkg_config_file):
+    pkg_config_file(
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+                ],
+            }
+        ]
+    )
+    response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+    }
+
+
+def test_path_excludes_put_creates_entry(pkg_config_file):
+    response = client.put(
+        "/path-excludes",
+        json={"package_id": "NPM::lodash:4.0.0", "pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+    }
+    # verify file was written
+    written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
+    assert written[0]["id"] == "NPM::lodash:4.0.0"
+    assert written[0]["path_excludes"][0]["pattern"] == "tests/**"
+
+
+def test_path_excludes_put_twice_no_duplicates(pkg_config_file):
+    client.put(
+        "/path-excludes",
+        json={"package_id": "NPM::lodash:4.0.0", "pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+    )
+    client.put(
+        "/path-excludes",
+        json={"package_id": "NPM::lodash:4.0.0", "pattern": "docs/**", "reason": "DOCUMENTATION_OF", "comment": ""},
+    )
+    # same pattern again — should not duplicate
+    client.put(
+        "/path-excludes",
+        json={"package_id": "NPM::lodash:4.0.0", "pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+    )
+    response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
+    excludes = response.json()["path_excludes"]
+    assert len(excludes) == 2
+    patterns = [e["pattern"] for e in excludes]
+    assert patterns == ["tests/**", "docs/**"]
+
+
+def test_path_excludes_delete_removes_pattern(pkg_config_file):
+    pkg_config_file(
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+                    {"pattern": "docs/**", "reason": "DOCUMENTATION_OF", "comment": ""},
+                ],
+            }
+        ]
+    )
+    response = client.delete("/path-excludes?package_id=NPM::lodash:4.0.0&pattern=tests%2F%2A%2A")
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "path_excludes": [{"pattern": "docs/**", "reason": "DOCUMENTATION_OF", "comment": ""}],
+    }
+
+
+def test_path_excludes_delete_nonexistent_pattern_returns_unchanged(pkg_config_file):
+    pkg_config_file(
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+            }
+        ]
+    )
+    response = client.delete("/path-excludes?package_id=NPM::lodash:4.0.0&pattern=nonexistent%2F%2A%2A")
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+    }
+
+
 def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://scancode-licensedb.aboutcode.org/index.json",

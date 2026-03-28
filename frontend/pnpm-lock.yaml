@@ -11,6 +11,9 @@ importers:
       diff:
         specifier: ^8.0.4
         version: 8.0.4
+      minimatch:
+        specifier: ^10.2.4
+        version: 10.2.4
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.29(typescript@5.9.3))

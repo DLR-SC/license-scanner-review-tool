@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, onMounted } from 'vue'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
+import { minimatch } from 'minimatch'
 import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'
 
 const store = useScanResultStore()
@@ -41,6 +42,16 @@ function findingTier(f: LicenseFinding, spdx: string): number {
   if (LICENSE_FILE_RE.test(base)) return 1
   if (!spdx.includes(f.license)) return 2
   return 3
+}
+
+function pathExcludeOptions(filePath: string): string[] {
+  const parts = filePath.split('/')
+  const options: string[] = []
+  for (let i = 1; i < parts.length; i++) {
+    options.push(parts.slice(0, i).join('/') + '/**')
+  }
+  options.push(filePath)
+  return options
 }
 
 const currentIndex = ref(0)
@@ -77,16 +88,27 @@ const findingIndex = ref(0)
 
 const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
 
+const currentExcludes = computed(() => store.pathExcludes[currentPackage.value?.id ?? ''] ?? [])
+
 const reviewFindings = computed(() => {
   const spdx = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
+  const excludePatterns = currentExcludes.value.map((e) => e.pattern)
   return allFindings.value
-    .filter((f) => f.score < 100 || !spdx.includes(f.license))
+    .filter(
+      (f) =>
+        (f.score < 100 || !spdx.includes(f.license)) &&
+        !excludePatterns.some((p) => minimatch(f.location.path, p)),
+    )
     .slice()
     .sort((a, b) => {
       const tierDiff = findingTier(a, spdx) - findingTier(b, spdx)
       return tierDiff !== 0 ? tierDiff : b.score - a.score
     })
 })
+
+function previewExcludeCount(pattern: string): number {
+  return reviewFindings.value.filter((f) => minimatch(f.location.path, pattern)).length
+}
 
 const hiddenFindings = computed(() =>
   allFindings.value.filter(
@@ -109,6 +131,29 @@ const currentFinding = computed(() => reviewFindings.value[findingIndex.value] ?
 const totalFindings = computed(() => reviewFindings.value.length)
 
 const showHidden = ref(false)
+
+const showExcludeForm = ref(false)
+const excludeFormPattern = ref('')
+const excludeFormReason = ref('TEST_TOOL_OF')
+const excludeFormComment = ref('')
+
+function openExcludeForm() {
+  const path = currentFinding.value?.location.path ?? ''
+  excludeFormPattern.value = pathExcludeOptions(path)[0] ?? path
+  excludeFormReason.value = 'TEST_TOOL_OF'
+  excludeFormComment.value = ''
+  showExcludeForm.value = true
+}
+
+async function confirmExclude() {
+  if (!currentPackage.value) return
+  await store.addPathExclude(currentPackage.value.id, {
+    pattern: excludeFormPattern.value,
+    reason: excludeFormReason.value,
+    comment: excludeFormComment.value,
+  })
+  showExcludeForm.value = false
+}
 
 const fileContent = ref<Array<{ number: number; content: string; highlighted: boolean }> | null>(
   null,
@@ -195,6 +240,7 @@ watch(
     contextAbove.value = 5
     contextBelow.value = 5
     fileTotalLines.value = 0
+    showExcludeForm.value = false
     if (finding) {
       loadFinding(finding)
       if (isWholeLicenseText(finding)) loadCanonicalText(finding.license)
@@ -207,7 +253,7 @@ watch(
   { immediate: true },
 )
 
-watch(currentPackage, () => {
+watch(currentPackage, (pkg) => {
   findingIndex.value = 0
   fileContent.value = null
   canonicalText.value = null
@@ -215,6 +261,8 @@ watch(currentPackage, () => {
   contextBelow.value = 5
   fileTotalLines.value = 0
   showHidden.value = false
+  showExcludeForm.value = false
+  if (pkg) store.fetchPathExcludes(pkg.id)
 })
 
 const vcsSiblings = computed(() => currentPackage.value?.vcs_siblings ?? [])
@@ -409,7 +457,12 @@ watch(
         <template v-else-if="currentFinding">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-medium">
-              Finding {{ findingIndex + 1 }} of {{ totalFindings }}
+              Finding {{ findingIndex + 1 }} of {{ totalFindings
+              }}<span
+                v-if="showExcludeForm && previewExcludeCount(excludeFormPattern) > 0"
+                class="text-gray-400 ml-1"
+                >−{{ previewExcludeCount(excludeFormPattern) }}</span
+              >
             </h3>
             <div class="flex gap-2">
               <button
@@ -428,6 +481,28 @@ watch(
               </button>
             </div>
           </div>
+          <div
+            v-if="currentExcludes.length"
+            class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
+          >
+            <span class="text-gray-500 font-medium"
+              >Path excludes active for this package ({{ currentExcludes.length }}):</span
+            >
+            <div
+              v-for="exc in currentExcludes"
+              :key="exc.pattern"
+              class="flex items-center gap-2"
+            >
+              <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
+              <span class="text-gray-500">{{ exc.reason }}</span>
+              <button
+                class="ml-auto text-gray-400 hover:text-red-500"
+                @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
           <div class="border rounded">
             <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
               <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
@@ -437,6 +512,36 @@ watch(
                 }}</span
               >
               <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
+              <button
+                v-if="!showExcludeForm"
+                class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                @click="openExcludeForm"
+              >
+                Exclude path
+              </button>
+            </div>
+            <div v-if="showExcludeForm" class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50">
+              <select v-model="excludeFormPattern" class="border rounded px-2 py-1 text-xs">
+                <option
+                  v-for="opt in pathExcludeOptions(currentFinding.location.path)"
+                  :key="opt"
+                  :value="opt"
+                >{{ opt }}</option>
+              </select>
+              <select v-model="excludeFormReason" class="border rounded px-2 py-1 text-xs">
+                <option>TEST_TOOL_OF</option>
+                <option>DOCUMENTATION_OF</option>
+                <option>BUILD_TOOL_OF</option>
+                <option>DEV_TOOL_OF</option>
+                <option>OTHER</option>
+              </select>
+              <input
+                v-model="excludeFormComment"
+                placeholder="Comment (optional)"
+                class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
+              />
+              <button class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100" @click="confirmExclude">Confirm</button>
+              <button class="text-xs text-gray-400 hover:text-gray-600" @click="showExcludeForm = false">Cancel</button>
             </div>
             <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
             <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
