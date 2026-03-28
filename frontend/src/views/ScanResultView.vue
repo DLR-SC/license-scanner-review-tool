@@ -114,6 +114,9 @@ const fileContent = ref<Array<{ number: number; content: string; highlighted: bo
   null,
 )
 const fileLoading = ref(false)
+const contextAbove = ref(5)
+const contextBelow = ref(5)
+const fileTotalLines = ref(0)
 
 async function loadFinding(finding: LicenseFinding) {
   fileContent.value = null
@@ -125,15 +128,28 @@ async function loadFinding(finding: LicenseFinding) {
       path: finding.location.path,
       start_line: String(finding.location.start_line),
       end_line: String(finding.location.end_line),
+      context_before: String(contextAbove.value),
+      context_after: String(contextBelow.value),
     })
     const res = await fetch(new URL(`/file-content?${params}`, base).toString())
     if (res.ok) {
       const data = await res.json()
       fileContent.value = data.lines
+      fileTotalLines.value = data.total_lines
     }
   } finally {
     fileLoading.value = false
   }
+}
+
+async function expandAbove() {
+  contextAbove.value += 10
+  await loadFinding(currentFinding.value!)
+}
+
+async function expandBelow() {
+  contextBelow.value += 10
+  await loadFinding(currentFinding.value!)
 }
 
 /**
@@ -176,6 +192,9 @@ const wordDiff = computed<Change[] | null>(() => {
 watch(
   currentFinding,
   (finding) => {
+    contextAbove.value = 5
+    contextBelow.value = 5
+    fileTotalLines.value = 0
     if (finding) {
       loadFinding(finding)
       if (isWholeLicenseText(finding)) loadCanonicalText(finding.license)
@@ -192,6 +211,9 @@ watch(currentPackage, () => {
   findingIndex.value = 0
   fileContent.value = null
   canonicalText.value = null
+  contextAbove.value = 5
+  contextBelow.value = 5
+  fileTotalLines.value = 0
   showHidden.value = false
 })
 
@@ -423,7 +445,7 @@ watch(
             <pre
               v-else
               class="overflow-x-auto text-xs"
-            ><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template></pre>
+            ><div v-if="(fileContent[0]?.number ?? 0) > 1" class="flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 cursor-pointer select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></div><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><div v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" class="flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 cursor-pointer select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></div></pre>
           </div>
           <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
             Loading canonical text…
@@ -433,7 +455,9 @@ watch(
               Diff vs. canonical
               <span class="font-mono">{{ currentFinding.license }}</span>
             </div>
-            <pre class="overflow-x-auto text-xs px-3 py-2"><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
+            <pre
+              class="overflow-x-auto text-xs px-3 py-2"
+            ><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
                 'bg-green-100 text-green-800': change.added,
                 'bg-red-100 text-red-700 line-through': change.removed,
               }">{{ change.value }}</span></template></pre>

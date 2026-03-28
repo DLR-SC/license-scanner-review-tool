@@ -528,7 +528,7 @@ def test_file_content_bad_package_id():
         "/file-content?package_id=NPM:lodash&path=LICENSE&start_line=1&end_line=1"
     )
     assert response.status_code == 200
-    assert response.json() == {"lines": None}
+    assert response.json() == {"lines": None, "total_lines": 0}
 
 
 def test_file_content_missing_package_dir(tmp_path):
@@ -539,7 +539,7 @@ def test_file_content_missing_package_dir(tmp_path):
             "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
         )
         assert response.status_code == 200
-        assert response.json() == {"lines": None}
+        assert response.json() == {"lines": None, "total_lines": 0}
     finally:
         main_module.ORT_OUT_PATH = original
 
@@ -550,14 +550,14 @@ def test_file_content_missing_file(file_content_dir):
         "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
     )
     assert response.status_code == 200
-    assert response.json() == {"lines": None}
+    assert response.json() == {"lines": None, "total_lines": 0}
 
 
 def test_file_content_returns_lines(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 6))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=2&end_line=3&context=0"
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=2&end_line=3&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -586,7 +586,7 @@ def test_file_content_context_clamped_at_start(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 4))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context=10"
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context_before=10&context_after=10"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -601,7 +601,7 @@ def test_file_content_context_clamped_at_end(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 4))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=3&end_line=3&context=10"
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=3&end_line=3&context_before=10&context_after=10"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -615,7 +615,7 @@ def test_file_content_context_clamped_at_end(file_content_dir):
 def test_file_content_empty_namespace(file_content_dir):
     file_content_dir("PyPI::requests:2.0", "LICENSE", "MIT License")
     response = client.get(
-        "/file-content?package_id=PyPI::requests:2.0&path=LICENSE&start_line=1&end_line=1&context=0"
+        "/file-content?package_id=PyPI::requests:2.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -626,10 +626,10 @@ def test_file_content_empty_namespace(file_content_dir):
 def test_file_content_empty_file(file_content_dir):
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", "")
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context=0"
+        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
-    assert response.json() == {"lines": []}
+    assert response.json() == {"lines": [], "total_lines": 0}
 
 
 # /license-text

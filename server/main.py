@@ -268,11 +268,17 @@ class FileContentLine(BaseModel):
 
 class FileContent(BaseModel):
     lines: list[FileContentLine] | None
+    total_lines: int = 0
 
 
 @app.get("/file-content", response_model=FileContent)
 def get_file_content(
-    package_id: str, path: str, start_line: int, end_line: int, context: int = 5
+    package_id: str,
+    path: str,
+    start_line: int,
+    end_line: int,
+    context_before: int = 5,
+    context_after: int = 5,
 ):
     pkg_dir = pkg_id_to_dir(package_id)
     if pkg_dir is None:
@@ -281,8 +287,8 @@ def get_file_content(
     if not file_path.is_file():
         return FileContent(lines=None)
     all_lines = file_path.read_text(errors="replace").splitlines()
-    fetch_start = max(0, start_line - 1 - context)
-    fetch_end = min(len(all_lines), end_line + context)
+    fetch_start = max(0, start_line - 1 - context_before)
+    fetch_end = min(len(all_lines), end_line + context_after)
     lines = [
         FileContentLine(
             number=i + 1,
@@ -291,7 +297,7 @@ def get_file_content(
         )
         for i in range(fetch_start, fetch_end)
     ]
-    return FileContent(lines=lines)
+    return FileContent(lines=lines, total_lines=len(all_lines))
 
 
 class DownloadStats(BaseModel):
