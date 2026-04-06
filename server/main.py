@@ -28,6 +28,7 @@ app.add_middleware(
 SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
 ORT_OUT_PATH = Path(__file__).parent / "ort-out"
 PKG_CONFIG_PATH = Path(__file__).parent / "ort-out" / "package-configurations.yml"
+CURATIONS_PATH = Path(__file__).parent / "ort-out" / "curations.yml"
 
 CACHE_TTL: dict[str, float] = {
     "github_stars": 3600,  # 1 hour
@@ -292,6 +293,31 @@ def _write_pkg_configs(configs: list[dict]) -> None:
     with PKG_CONFIG_PATH.open("w") as f:
         yaml.dump(configs, f, default_flow_style=False, allow_unicode=True)
 
+
+class PackageCuration(BaseModel):
+    package_id: str
+    comment: str = ""
+    concluded_license: str | None = None
+
+
+class SetCurationRequest(BaseModel):
+    package_id: str
+    comment: str = ""
+    concluded_license: str
+
+
+def _read_curations() -> list[dict]:
+    if not CURATIONS_PATH.exists():
+        return []
+    with CURATIONS_PATH.open() as f:
+        data = yaml.safe_load(f)
+    return data or []
+
+
+def _write_curations(curations: list[dict]) -> None:
+    CURATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with CURATIONS_PATH.open("w") as f:
+        yaml.dump(curations, f, default_flow_style=False, allow_unicode=True)
 
 
 class FileContentLine(BaseModel):
@@ -623,3 +649,41 @@ def remove_path_exclude(package_id: str, pattern: str):
         package_id=package_id,
         path_excludes=[PathExclude(**e) for e in entry["path_excludes"]],
     )
+
+
+@app.get("/license-curations", response_model=PackageCuration)
+def get_license_curation(package_id: str):
+    curations = _read_curations()
+    entry = next((c for c in curations if c.get("id") == package_id), None)
+    if entry is None:
+        return PackageCuration(package_id=package_id)
+    cur = entry.get("curations") or {}
+    return PackageCuration(
+        package_id=package_id,
+        comment=cur.get("comment", ""),
+        concluded_license=cur.get("concluded_license"),
+    )
+
+
+@app.put("/license-curations", response_model=PackageCuration)
+def set_license_curation(req: SetCurationRequest):
+    curations = _read_curations()
+    entry = next((c for c in curations if c.get("id") == req.package_id), None)
+    if entry is None:
+        entry = {"id": req.package_id, "curations": {}}
+        curations.append(entry)
+    entry["curations"] = {"comment": req.comment, "concluded_license": req.concluded_license}
+    _write_curations(curations)
+    return PackageCuration(
+        package_id=req.package_id,
+        comment=req.comment,
+        concluded_license=req.concluded_license,
+    )
+
+
+@app.delete("/license-curations", response_model=PackageCuration)
+def remove_license_curation(package_id: str):
+    curations = _read_curations()
+    curations = [c for c in curations if c.get("id") != package_id]
+    _write_curations(curations)
+    return PackageCuration(package_id=package_id)

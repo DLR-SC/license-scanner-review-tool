@@ -118,6 +118,8 @@ export async function mockAll(
     fileContent?: object
     pathExcludes?: object[]
     onPathExcludesMutation?: (body: object) => object
+    licenseCuration?: object
+    onLicenseCurationsMutation?: (body: object) => object
   } = {},
 ) {
   const scanResult = opts.scanResult ?? makeScanResult([FINDING_TESTS_UNIT])
@@ -126,9 +128,7 @@ export async function mockAll(
 
   await page.route('**/scan-result', (route) => route.fulfill({ json: scanResult }))
   await page.route('**/file-content**', (route) => route.fulfill({ json: fileContent }))
-  await page.route('**/downloads**', (route) =>
-    route.fulfill({ json: { weekly_downloads: null } }),
-  )
+  await page.route('**/downloads**', (route) => route.fulfill({ json: { weekly_downloads: null } }))
   await page.route('**/github-stars**', (route) => route.fulfill({ json: { stars: null } }))
   await page.route('**/path-excludes**', (route) => {
     const method = route.request().method()
@@ -149,5 +149,23 @@ export async function mockAll(
     }
     // default: return unchanged list
     return route.fulfill({ json: { package_id: PKG1_ID, path_excludes: pathExcludes } })
+  })
+  await page.route('**/license-curations**', (route) => {
+    const method = route.request().method()
+    const url = new URL(route.request().url())
+    const pkgId = url.searchParams.get('package_id') ?? ''
+    if (method === 'GET') {
+      return route.fulfill({
+        json: opts.licenseCuration ?? { package_id: pkgId, comment: '', concluded_license: null },
+      })
+    }
+    if (method === 'PUT' && opts.onLicenseCurationsMutation) {
+      const body = JSON.parse(route.request().postData() ?? '{}')
+      return route.fulfill({ json: opts.onLicenseCurationsMutation(body) })
+    }
+    if (method === 'DELETE' && opts.onLicenseCurationsMutation) {
+      return route.fulfill({ json: opts.onLicenseCurationsMutation({ package_id: pkgId }) })
+    }
+    return route.fulfill({ json: { package_id: pkgId, comment: '', concluded_license: null } })
   })
 }

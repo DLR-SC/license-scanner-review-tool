@@ -137,6 +137,30 @@ const excludeFormPattern = ref('')
 const excludeFormReason = ref('TEST_TOOL_OF')
 const excludeFormComment = ref('')
 
+const showCurationForm = ref(false)
+const curationComment = ref('')
+const curationLicense = ref('')
+
+const currentCuration = computed(() => store.curations[currentPackage.value?.id ?? ''] ?? null)
+
+function openTrustForm() {
+  curationLicense.value = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
+  curationComment.value = 'Declared license is correct'
+  showCurationForm.value = true
+}
+
+function openCurationForm() {
+  curationLicense.value = currentCuration.value?.concluded_license ?? ''
+  curationComment.value = currentCuration.value?.comment ?? ''
+  showCurationForm.value = true
+}
+
+async function confirmCuration() {
+  if (!currentPackage.value) return
+  await store.setCuration(currentPackage.value.id, curationComment.value, curationLicense.value)
+  showCurationForm.value = false
+}
+
 function openExcludeForm() {
   const path = currentFinding.value?.location.path ?? ''
   excludeFormPattern.value = pathExcludeOptions(path)[0] ?? path
@@ -262,7 +286,11 @@ watch(currentPackage, (pkg) => {
   fileTotalLines.value = 0
   showHidden.value = false
   showExcludeForm.value = false
-  if (pkg) store.fetchPathExcludes(pkg.id)
+  showCurationForm.value = false
+  if (pkg) {
+    store.fetchPathExcludes(pkg.id)
+    store.fetchCuration(pkg.id)
+  }
 })
 
 const vcsSiblings = computed(() => currentPackage.value?.vcs_siblings ?? [])
@@ -416,6 +444,69 @@ watch(
             </td>
           </tr>
           <tr>
+            <th class="border px-3 py-1.5 text-left">Concluded license</th>
+            <td class="border px-3 py-1.5">
+              <template v-if="currentCuration?.concluded_license && !showCurationForm">
+                <span class="font-mono">{{ currentCuration.concluded_license }}</span>
+                <span v-if="currentCuration.comment" class="text-gray-400 ml-2 text-xs">{{
+                  currentCuration.comment
+                }}</span>
+                <button
+                  class="ml-2 text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
+                  @click="openCurationForm"
+                >
+                  Edit
+                </button>
+                <button
+                  class="ml-1 text-xs text-gray-400 hover:text-red-500"
+                  @click="store.removeCuration(currentPackage!.id)"
+                >
+                  ✕
+                </button>
+              </template>
+              <template v-else-if="showCurationForm">
+                <div class="flex flex-wrap gap-2 items-center">
+                  <input
+                    v-model="curationLicense"
+                    placeholder="SPDX expression"
+                    class="border rounded px-2 py-0.5 text-xs font-mono"
+                  />
+                  <input
+                    v-model="curationComment"
+                    placeholder="Comment (optional)"
+                    class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
+                  />
+                  <button
+                    class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
+                    @click="confirmCuration"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    class="text-xs text-gray-400 hover:text-gray-600"
+                    @click="showCurationForm = false"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </template>
+              <template v-else>
+                <button
+                  class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                  @click="openTrustForm"
+                >
+                  Trust declared license
+                </button>
+                <button
+                  class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                  @click="openCurationForm"
+                >
+                  Conclude license
+                </button>
+              </template>
+            </td>
+          </tr>
+          <tr>
             <th class="border px-3 py-1.5 text-left"># Dependencies</th>
             <td class="border px-3 py-1.5">{{ currentPackage.dependency_count }}</td>
           </tr>
@@ -488,11 +579,7 @@ watch(
             <span class="text-gray-500 font-medium"
               >Path excludes active for this package ({{ currentExcludes.length }}):</span
             >
-            <div
-              v-for="exc in currentExcludes"
-              :key="exc.pattern"
-              class="flex items-center gap-2"
-            >
+            <div v-for="exc in currentExcludes" :key="exc.pattern" class="flex items-center gap-2">
               <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
               <span class="text-gray-500">{{ exc.reason }}</span>
               <button
@@ -520,13 +607,18 @@ watch(
                 Exclude path
               </button>
             </div>
-            <div v-if="showExcludeForm" class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50">
+            <div
+              v-if="showExcludeForm"
+              class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
+            >
               <select v-model="excludeFormPattern" class="border rounded px-2 py-1 text-xs">
                 <option
                   v-for="opt in pathExcludeOptions(currentFinding.location.path)"
                   :key="opt"
                   :value="opt"
-                >{{ opt }}</option>
+                >
+                  {{ opt }}
+                </option>
               </select>
               <select v-model="excludeFormReason" class="border rounded px-2 py-1 text-xs">
                 <option>TEST_TOOL_OF</option>
@@ -540,8 +632,18 @@ watch(
                 placeholder="Comment (optional)"
                 class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
               />
-              <button class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100" @click="confirmExclude">Confirm</button>
-              <button class="text-xs text-gray-400 hover:text-gray-600" @click="showExcludeForm = false">Cancel</button>
+              <button
+                class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
+                @click="confirmExclude"
+              >
+                Confirm
+              </button>
+              <button
+                class="text-xs text-gray-400 hover:text-gray-600"
+                @click="showExcludeForm = false"
+              >
+                Cancel
+              </button>
             </div>
             <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
             <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">

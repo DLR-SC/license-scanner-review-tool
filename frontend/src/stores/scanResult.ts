@@ -76,6 +76,12 @@ export interface PackagePathExcludes {
   path_excludes: PathExclude[]
 }
 
+export interface PackageCuration {
+  package_id: string
+  comment: string
+  concluded_license: string | null
+}
+
 export interface OrtResult {
   repository: Repository
   projects: Project[]
@@ -91,6 +97,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const pathExcludes = ref<Record<string, PathExclude[]>>({})
+  const curations = ref<Record<string, PackageCuration>>({})
 
   async function fetchScanResult() {
     loading.value = true
@@ -153,6 +160,42 @@ export const useScanResultStore = defineStore('scanResult', () => {
     }
   }
 
+  async function fetchCuration(packageId: string) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(`/license-curations?package_id=${encodeURIComponent(packageId)}`, base).toString(),
+    )
+    if (res.ok) {
+      const data: PackageCuration = await res.json()
+      curations.value = { ...curations.value, [packageId]: data }
+    }
+  }
+
+  async function setCuration(packageId: string, comment: string, concluded_license: string) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(new URL('/license-curations', base).toString(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package_id: packageId, comment, concluded_license }),
+    })
+    if (res.ok) {
+      const data: PackageCuration = await res.json()
+      curations.value = { ...curations.value, [packageId]: data }
+    }
+  }
+
+  async function removeCuration(packageId: string) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(`/license-curations?package_id=${encodeURIComponent(packageId)}`, base).toString(),
+      { method: 'DELETE' },
+    )
+    if (res.ok) {
+      const data: PackageCuration = await res.json()
+      curations.value = { ...curations.value, [packageId]: data }
+    }
+  }
+
   return {
     repository,
     projects,
@@ -161,9 +204,13 @@ export const useScanResultStore = defineStore('scanResult', () => {
     loading,
     error,
     pathExcludes,
+    curations,
     fetchScanResult,
     fetchPathExcludes,
     addPathExclude,
     removePathExclude,
+    fetchCuration,
+    setCuration,
+    removeCuration,
   }
 })

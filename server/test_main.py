@@ -815,6 +815,87 @@ def test_path_excludes_delete_nonexistent_pattern_returns_unchanged(pkg_config_f
     }
 
 
+# /license-curations
+
+
+@pytest.fixture
+def curations_file(tmp_path):
+    original = main_module.CURATIONS_PATH
+
+    def write(data: list):
+        path = tmp_path / "curations.yml"
+        path.write_text(yaml.dump(data))
+        main_module.CURATIONS_PATH = path
+
+    main_module.CURATIONS_PATH = tmp_path / "curations.yml"
+    yield write
+    main_module.CURATIONS_PATH = original
+
+
+def test_license_curations_missing_file_returns_null(curations_file):
+    response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
+    assert response.status_code == 200
+    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": None}
+
+
+def test_license_curations_populated_file_returns_curation(curations_file):
+    curations_file(
+        [{"id": "NPM::lodash:4.0.0", "curations": {"comment": "Upstream declares MIT", "concluded_license": "MIT"}}]
+    )
+    response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
+    assert response.status_code == 200
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "comment": "Upstream declares MIT",
+        "concluded_license": "MIT",
+    }
+
+
+def test_license_curations_put_creates_entry(curations_file):
+    response = client.put(
+        "/license-curations",
+        json={"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": "MIT"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": "MIT"}
+    written = yaml.safe_load(main_module.CURATIONS_PATH.read_text())
+    assert written[0]["id"] == "NPM::lodash:4.0.0"
+    assert written[0]["curations"]["concluded_license"] == "MIT"
+
+
+def test_license_curations_put_twice_upserts(curations_file):
+    client.put(
+        "/license-curations",
+        json={"package_id": "NPM::lodash:4.0.0", "comment": "first", "concluded_license": "MIT"},
+    )
+    client.put(
+        "/license-curations",
+        json={"package_id": "NPM::lodash:4.0.0", "comment": "second", "concluded_license": "Apache-2.0"},
+    )
+    response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
+    assert response.json()["concluded_license"] == "Apache-2.0"
+    assert response.json()["comment"] == "second"
+    written = yaml.safe_load(main_module.CURATIONS_PATH.read_text())
+    assert len(written) == 1
+
+
+def test_license_curations_delete_removes_entry(curations_file):
+    curations_file(
+        [{"id": "NPM::lodash:4.0.0", "curations": {"comment": "", "concluded_license": "MIT"}}]
+    )
+    response = client.delete("/license-curations?package_id=NPM::lodash:4.0.0")
+    assert response.status_code == 200
+    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": None}
+    written = yaml.safe_load(main_module.CURATIONS_PATH.read_text())
+    assert written is None or written == []
+
+
+def test_license_curations_delete_nonexistent_returns_null(curations_file):
+    response = client.delete("/license-curations?package_id=NPM::lodash:4.0.0")
+    assert response.status_code == 200
+    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": None}
+
+
 def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://scancode-licensedb.aboutcode.org/index.json",
