@@ -66,6 +66,20 @@ export const FINDING_SOURCE = {
   score: 95,
 }
 
+// same file as FINDING_SOURCE — used for sibling badge tests
+export const FINDING_SOURCE_SIBLING = {
+  license: 'MIT',
+  location: { path: 'src/main.ts', start_line: 10, end_line: 12 },
+  score: 80,
+}
+
+// same file as FINDING_SOURCE, score 100 + in declared MIT → hidden (not in reviewFindings)
+export const FINDING_SOURCE_HIDDEN = {
+  license: 'MIT',
+  location: { path: 'src/main.ts', start_line: 20, end_line: 20 },
+  score: 100,
+}
+
 export const FINDING_MANIFEST = {
   license: 'MIT',
   location: { path: 'package.json', start_line: 1, end_line: 2 },

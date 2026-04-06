@@ -130,6 +130,20 @@ const hiddenByLicense = computed(() => {
 const currentFinding = computed(() => reviewFindings.value[findingIndex.value] ?? null)
 const totalFindings = computed(() => reviewFindings.value.length)
 
+const siblingFindingsInFile = computed(() => {
+  if (!currentFinding.value) return []
+  const path = currentFinding.value.location.path
+  return allFindings.value.filter(
+    (f) =>
+      f.location.path === path &&
+      !(
+        f.location.start_line === currentFinding.value!.location.start_line &&
+        f.location.end_line === currentFinding.value!.location.end_line &&
+        f.license === currentFinding.value!.license
+      ),
+  )
+})
+
 const showHidden = ref(false)
 
 const showExcludeForm = ref(false)
@@ -599,6 +613,26 @@ watch(
                 }}</span
               >
               <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
+              <template v-if="siblingFindingsInFile.length">
+                <span class="text-gray-300">|</span>
+                <span class="text-gray-400 text-xs">Also in file:</span>
+                <button
+                  v-for="(f, i) in siblingFindingsInFile"
+                  :key="i"
+                  class="text-xs border rounded px-1.5 py-0.5 font-mono"
+                  :class="
+                    reviewFindings.indexOf(f) !== -1
+                      ? 'text-gray-600 hover:bg-gray-100 cursor-pointer'
+                      : 'text-gray-400 cursor-default'
+                  "
+                  :disabled="reviewFindings.indexOf(f) === -1"
+                  @click="
+                    reviewFindings.indexOf(f) !== -1 && (findingIndex = reviewFindings.indexOf(f))
+                  "
+                >
+                  {{ f.license }} | {{ f.score }}
+                </button>
+              </template>
               <button
                 v-if="!showExcludeForm"
                 class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
