@@ -1,3 +1,7 @@
+default:
+  tags:
+    - docker
+
 .frontend:
   image: node:24
   needs: []
