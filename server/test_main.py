@@ -634,12 +634,22 @@ def test_file_content_empty_file(file_content_dir):
 
 # /license-text
 
-INDEX_MIT = [{"license_key": "mit", "spdx_license_key": "MIT", "other_spdx_license_keys": []}]
+INDEX_MIT = [
+    {"license_key": "mit", "spdx_license_key": "MIT", "other_spdx_license_keys": []}
+]
 INDEX_APACHE = [
-    {"license_key": "apache-2.0", "spdx_license_key": "Apache-2.0", "other_spdx_license_keys": []}
+    {
+        "license_key": "apache-2.0",
+        "spdx_license_key": "Apache-2.0",
+        "other_spdx_license_keys": [],
+    }
 ]
 INDEX_BSD = [
-    {"license_key": "bsd-new", "spdx_license_key": "BSD-3-Clause", "other_spdx_license_keys": []}
+    {
+        "license_key": "bsd-new",
+        "spdx_license_key": "BSD-3-Clause",
+        "other_spdx_license_keys": [],
+    }
 ]
 INDEX_EMPTY: list = []
 
@@ -737,19 +747,28 @@ def test_path_excludes_populated_file_returns_list(pkg_config_file):
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
-        "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+        "path_excludes": [
+            {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+        ],
     }
 
 
 def test_path_excludes_put_creates_entry(pkg_config_file):
     response = client.put(
         "/path-excludes",
-        json={"package_id": "NPM::lodash:4.0.0", "pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "pattern": "tests/**",
+            "reason": "TEST_TOOL_OF",
+            "comment": "",
+        },
     )
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
-        "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+        "path_excludes": [
+            {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+        ],
     }
     # verify file was written
     written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
@@ -760,16 +779,31 @@ def test_path_excludes_put_creates_entry(pkg_config_file):
 def test_path_excludes_put_twice_no_duplicates(pkg_config_file):
     client.put(
         "/path-excludes",
-        json={"package_id": "NPM::lodash:4.0.0", "pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "pattern": "tests/**",
+            "reason": "TEST_TOOL_OF",
+            "comment": "",
+        },
     )
     client.put(
         "/path-excludes",
-        json={"package_id": "NPM::lodash:4.0.0", "pattern": "docs/**", "reason": "DOCUMENTATION_OF", "comment": ""},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "pattern": "docs/**",
+            "reason": "DOCUMENTATION_OF",
+            "comment": "",
+        },
     )
     # same pattern again — should not duplicate
     client.put(
         "/path-excludes",
-        json={"package_id": "NPM::lodash:4.0.0", "pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "pattern": "tests/**",
+            "reason": "TEST_TOOL_OF",
+            "comment": "",
+        },
     )
     response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
     excludes = response.json()["path_excludes"]
@@ -790,11 +824,15 @@ def test_path_excludes_delete_removes_pattern(pkg_config_file):
             }
         ]
     )
-    response = client.delete("/path-excludes?package_id=NPM::lodash:4.0.0&pattern=tests%2F%2A%2A")
+    response = client.delete(
+        "/path-excludes?package_id=NPM::lodash:4.0.0&pattern=tests%2F%2A%2A"
+    )
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
-        "path_excludes": [{"pattern": "docs/**", "reason": "DOCUMENTATION_OF", "comment": ""}],
+        "path_excludes": [
+            {"pattern": "docs/**", "reason": "DOCUMENTATION_OF", "comment": ""}
+        ],
     }
 
 
@@ -803,15 +841,21 @@ def test_path_excludes_delete_nonexistent_pattern_returns_unchanged(pkg_config_f
         [
             {
                 "id": "NPM::lodash:4.0.0",
-                "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+                ],
             }
         ]
     )
-    response = client.delete("/path-excludes?package_id=NPM::lodash:4.0.0&pattern=nonexistent%2F%2A%2A")
+    response = client.delete(
+        "/path-excludes?package_id=NPM::lodash:4.0.0&pattern=nonexistent%2F%2A%2A"
+    )
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
-        "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+        "path_excludes": [
+            {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+        ],
     }
 
 
@@ -835,12 +879,24 @@ def curations_file(tmp_path):
 def test_license_curations_missing_file_returns_null(curations_file):
     response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
-    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": None}
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "comment": "",
+        "concluded_license": None,
+    }
 
 
 def test_license_curations_populated_file_returns_curation(curations_file):
     curations_file(
-        [{"id": "NPM::lodash:4.0.0", "curations": {"comment": "Upstream declares MIT", "concluded_license": "MIT"}}]
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "curations": {
+                    "comment": "Upstream declares MIT",
+                    "concluded_license": "MIT",
+                },
+            }
+        ]
     )
     response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
@@ -854,10 +910,18 @@ def test_license_curations_populated_file_returns_curation(curations_file):
 def test_license_curations_put_creates_entry(curations_file):
     response = client.put(
         "/license-curations",
-        json={"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": "MIT"},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "comment": "",
+            "concluded_license": "MIT",
+        },
     )
     assert response.status_code == 200
-    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": "MIT"}
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "comment": "",
+        "concluded_license": "MIT",
+    }
     written = yaml.safe_load(main_module.CURATIONS_PATH.read_text())
     assert written[0]["id"] == "NPM::lodash:4.0.0"
     assert written[0]["curations"]["concluded_license"] == "MIT"
@@ -866,11 +930,19 @@ def test_license_curations_put_creates_entry(curations_file):
 def test_license_curations_put_twice_upserts(curations_file):
     client.put(
         "/license-curations",
-        json={"package_id": "NPM::lodash:4.0.0", "comment": "first", "concluded_license": "MIT"},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "comment": "first",
+            "concluded_license": "MIT",
+        },
     )
     client.put(
         "/license-curations",
-        json={"package_id": "NPM::lodash:4.0.0", "comment": "second", "concluded_license": "Apache-2.0"},
+        json={
+            "package_id": "NPM::lodash:4.0.0",
+            "comment": "second",
+            "concluded_license": "Apache-2.0",
+        },
     )
     response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.json()["concluded_license"] == "Apache-2.0"
@@ -881,11 +953,20 @@ def test_license_curations_put_twice_upserts(curations_file):
 
 def test_license_curations_delete_removes_entry(curations_file):
     curations_file(
-        [{"id": "NPM::lodash:4.0.0", "curations": {"comment": "", "concluded_license": "MIT"}}]
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "curations": {"comment": "", "concluded_license": "MIT"},
+            }
+        ]
     )
     response = client.delete("/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
-    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": None}
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "comment": "",
+        "concluded_license": None,
+    }
     written = yaml.safe_load(main_module.CURATIONS_PATH.read_text())
     assert written is None or written == []
 
@@ -893,7 +974,11 @@ def test_license_curations_delete_removes_entry(curations_file):
 def test_license_curations_delete_nonexistent_returns_null(curations_file):
     response = client.delete("/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
-    assert response.json() == {"package_id": "NPM::lodash:4.0.0", "comment": "", "concluded_license": None}
+    assert response.json() == {
+        "package_id": "NPM::lodash:4.0.0",
+        "comment": "",
+        "concluded_license": None,
+    }
 
 
 def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
@@ -909,5 +994,7 @@ def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
     response = client.get("/license-text?license=BSD-3-Clause")
 
     assert response.status_code == 200
-    assert response.json() == {"text": "BSD 3-Clause License\n\nRedistribution and use..."}
+    assert response.json() == {
+        "text": "BSD 3-Clause License\n\nRedistribution and use..."
+    }
     assert httpx_mock.get_requests()[1].url.path == "/bsd-new.LICENSE"

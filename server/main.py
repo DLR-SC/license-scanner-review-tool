@@ -146,7 +146,6 @@ class OrtResult(BaseModel):
     scan_results: list[PackageScanResult]
 
 
-
 def parse_vcs(raw: dict) -> VcsInfo:
     return VcsInfo(
         type=raw.get("type", ""),
@@ -536,7 +535,9 @@ def add_path_exclude(req: AddPathExcludeRequest):
         configs.append(entry)
     excludes: list[dict] = entry.setdefault("path_excludes", [])
     if not any(e.get("pattern") == req.pattern for e in excludes):
-        excludes.append({"pattern": req.pattern, "reason": req.reason, "comment": req.comment})
+        excludes.append(
+            {"pattern": req.pattern, "reason": req.reason, "comment": req.comment}
+        )
     _write_pkg_configs(configs)
     return PackagePathExcludes(
         package_id=req.package_id,
@@ -581,7 +582,10 @@ def set_license_curation(req: SetCurationRequest):
     if entry is None:
         entry = {"id": req.package_id, "curations": {}}
         curations.append(entry)
-    entry["curations"] = {"comment": req.comment, "concluded_license": req.concluded_license}
+    entry["curations"] = {
+        "comment": req.comment,
+        "concluded_license": req.concluded_license,
+    }
     _write_curations(curations)
     return PackageCuration(
         package_id=req.package_id,
