@@ -20,7 +20,6 @@ export const PACKAGE_1 = {
   description: 'Lodash modular utilities.',
   homepage_url: 'https://lodash.com',
   vcs_url: '',
-  dependency_count: 0,
   vcs_siblings: [],
 }
 
@@ -33,8 +32,20 @@ export const PACKAGE_2 = {
   description: 'Terminal string styling done right',
   homepage_url: '',
   vcs_url: '',
-  dependency_count: 0,
   vcs_siblings: [],
+}
+
+// Dependency graph: both packages are root dependencies (scope entries point
+// directly into the packages list by index).
+export const DEPENDENCY_GRAPH = {
+  NPM: {
+    packages: [PKG1_ID, PKG2_ID],
+    scopes: {
+      'project::test:1.0.0:dependencies': [{ root: 0 }, { root: 1 }],
+    },
+    nodes: [],
+    edges: [],
+  },
 }
 
 // ---------------------------------------------------------------------------
@@ -125,10 +136,16 @@ export function makeScanResult(pkg1Findings: object[], pkg2Findings: object[] = 
   }
 }
 
+/** Navigate directly to the review page for a package by PURL. */
+export async function navigateToPackage(page: Page, purl: string) {
+  await page.goto('/review/' + purl)
+}
+
 export async function mockAll(
   page: Page,
   opts: {
     scanResult?: object
+    dependencyGraph?: object
     fileContent?: object
     pathExcludes?: object[]
     onPathExcludesMutation?: (body: object) => object
@@ -137,10 +154,12 @@ export async function mockAll(
   } = {},
 ) {
   const scanResult = opts.scanResult ?? makeScanResult([FINDING_TESTS_UNIT])
+  const dependencyGraph = opts.dependencyGraph ?? DEPENDENCY_GRAPH
   const fileContent = opts.fileContent ?? FILE_CONTENT_DEFAULT
   const pathExcludes = opts.pathExcludes ?? []
 
   await page.route('**/scan-result', (route) => route.fulfill({ json: scanResult }))
+  await page.route('**/dependency-graph', (route) => route.fulfill({ json: dependencyGraph }))
   await page.route('**/file-content**', (route) => route.fulfill({ json: fileContent }))
   await page.route('**/downloads**', (route) => route.fulfill({ json: { weekly_downloads: null } }))
   await page.route('**/github-stars**', (route) => route.fulfill({ json: { stars: null } }))

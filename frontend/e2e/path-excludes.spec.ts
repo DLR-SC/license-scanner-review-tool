@@ -6,6 +6,8 @@ import { test, expect } from '@playwright/test'
 import {
   mockAll,
   makeScanResult,
+  navigateToPackage,
+  PACKAGE_1,
   PKG1_ID,
   FINDING_TESTS_UNIT,
   FINDING_TESTS_INTEGRATION,
@@ -19,7 +21,7 @@ test('exclude form: open shows controls; Cancel closes with no PUT', async ({ pa
     if (route.request().method() === 'PUT') putCalled = true
     return route.fulfill({ json: { package_id: PKG1_ID, path_excludes: [] } })
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
 
   await expect(page.getByRole('button', { name: 'Exclude path' })).toBeVisible()
   await page.getByRole('button', { name: 'Exclude path' }).click()
@@ -35,7 +37,7 @@ test('exclude form: open shows controls; Cancel closes with no PUT', async ({ pa
 test('exclude form: path select contains hierarchy options', async ({ page }) => {
   // FINDING_TESTS_UNIT path = 'tests/unit/foo.ts'
   await mockAll(page)
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
 
   await page.getByRole('button', { name: 'Exclude path' }).click()
   const select = page.getByRole('combobox').first()
@@ -54,7 +56,7 @@ test('exclude form preview: −N shown and updates reactively with path selectio
   await mockAll(page, {
     scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_TESTS_INTEGRATION]),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
 
   await page.getByRole('button', { name: 'Exclude path' }).click()
   const patternSelect = page.getByRole('combobox').first()
@@ -77,9 +79,9 @@ test('exclude form submit: PUT body correct, form closes', async ({ page }) => {
       path_excludes: [returnedExclude],
     }),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   // FINDING_MANIFEST (package.json) sorts first (tier 0); navigate to finding 2 (tests/unit/foo.ts)
-  await page.getByRole('button', { name: 'Next →' }).nth(1).click()
+  await page.getByRole('button', { name: 'Next →' }).click()
   await page.getByRole('button', { name: 'Exclude path' }).click()
   await page.getByRole('combobox').first().selectOption('tests/**')
 
@@ -101,7 +103,7 @@ test('active exclude from GET hides matching findings', async ({ page }) => {
     scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_TESTS_INTEGRATION]),
     pathExcludes: [{ pattern: 'tests/**', reason: 'TEST_TOOL_OF', comment: '' }],
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await expect(page.getByText('No findings need review.')).toBeVisible()
 })
 
@@ -113,7 +115,7 @@ test('remove path exclude: DELETE sent with correct params', async ({ page }) =>
     pathExcludes: [existing],
     onPathExcludesMutation: () => ({ package_id: PKG1_ID, path_excludes: [] }),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await expect(page.getByText('[tests/**]', { exact: false })).toBeVisible()
 
   const [req] = await Promise.all([
@@ -130,11 +132,11 @@ test('exclude form closes when navigating to next finding', async ({ page }) => 
   await mockAll(page, {
     scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_TESTS_INTEGRATION]),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
 
   await page.getByRole('button', { name: 'Exclude path' }).click()
   await expect(page.getByRole('combobox').first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'Next →' }).nth(1).click()
+  await page.getByRole('button', { name: 'Next →' }).click()
   await expect(page.getByRole('combobox').first()).toBeHidden()
 })

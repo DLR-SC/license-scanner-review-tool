@@ -10,7 +10,11 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      redirect: '/review/',
+    },
+    {
+      path: '/review/:path(.*)',
+      name: 'review',
       component: ScanResultView,
     },
     {

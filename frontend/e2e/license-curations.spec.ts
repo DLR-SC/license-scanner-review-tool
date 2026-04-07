@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { test, expect } from '@playwright/test'
-import { mockAll, PKG1_ID } from './helpers.js'
+import { mockAll, navigateToPackage, PACKAGE_1, PKG1_ID } from './helpers.js'
 
 test('GET fetched on load with correct package_id', async ({ page }) => {
   const [req] = await Promise.all([
@@ -13,7 +13,7 @@ test('GET fetched on load with correct package_id', async ({ page }) => {
         r.url().includes('/license-curations') &&
         r.url().includes(`package_id=${encodeURIComponent(PKG1_ID)}`),
     ),
-    mockAll(page).then(() => page.goto('/')),
+    mockAll(page).then(() => navigateToPackage(page, PACKAGE_1.purl)),
   ])
   expect(req.url()).toContain(encodeURIComponent(PKG1_ID))
 })
@@ -22,7 +22,7 @@ test('no curation: Trust declared license and Conclude license buttons visible',
   page,
 }) => {
   await mockAll(page)
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await expect(page.getByRole('button', { name: 'Trust declared license' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Conclude license' })).toBeVisible()
 })
@@ -30,7 +30,7 @@ test('no curation: Trust declared license and Conclude license buttons visible',
 test('trust form: pre-fills declared SPDX expression and preset comment', async ({ page }) => {
   // PACKAGE_1 has declared_licenses_processed.spdx_expression = 'MIT'
   await mockAll(page)
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
   await expect(page.getByPlaceholder('SPDX expression')).toHaveValue('MIT')
   await expect(page.getByPlaceholder('Comment (optional)').first()).toHaveValue(
@@ -40,7 +40,7 @@ test('trust form: pre-fills declared SPDX expression and preset comment', async 
 
 test('conclude license form opens with empty inputs', async ({ page }) => {
   await mockAll(page)
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Conclude license' }).click()
   await expect(page.getByPlaceholder('SPDX expression')).toHaveValue('')
   await expect(page.getByPlaceholder('Comment (optional)').first()).toHaveValue('')
@@ -54,7 +54,7 @@ test('confirm: PUT body correct', async ({ page }) => {
       concluded_license: 'MIT',
     }),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
 
   const [req] = await Promise.all([
@@ -76,7 +76,7 @@ test('confirm: concluded license shown in row after PUT', async ({ page }) => {
       concluded_license: 'MIT',
     }),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
   await page.getByRole('button', { name: 'Confirm' }).click()
 
@@ -91,7 +91,7 @@ test('cancel: closes form with no PUT', async ({ page }) => {
     if (route.request().method() === 'PUT') putCalled = true
     return route.fulfill({ json: { package_id: PKG1_ID, comment: '', concluded_license: null } })
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
   await page.getByRole('button', { name: 'Cancel' }).click()
 
@@ -108,7 +108,7 @@ test('active curation from GET shown on load', async ({ page }) => {
       concluded_license: 'MIT',
     },
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await expect(page.getByRole('row', { name: /Concluded license/ })).toContainText('MIT')
   await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
   await expect(page.getByRole('button', { name: '✕' })).toBeVisible()
@@ -122,7 +122,7 @@ test('edit pre-fills form with existing curation values', async ({ page }) => {
       concluded_license: 'Apache-2.0',
     },
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Edit' }).click()
   await expect(page.getByPlaceholder('SPDX expression')).toHaveValue('Apache-2.0')
   await expect(page.getByPlaceholder('Comment (optional)').first()).toHaveValue('my comment')
@@ -137,7 +137,7 @@ test('✕ sends DELETE with correct package_id', async ({ page }) => {
       concluded_license: null,
     }),
   })
-  await page.goto('/')
+  await navigateToPackage(page, PACKAGE_1.purl)
 
   const [req] = await Promise.all([
     page.waitForRequest(

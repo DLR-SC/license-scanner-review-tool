@@ -6,12 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
 import { minimatch } from 'minimatch'
-import { useScanResultStore, type LicenseFinding } from '@/stores/scanResult'
+import { useScanResultStore, type LicenseFinding, type Package } from '@/stores/scanResult'
 
 const store = useScanResultStore()
+const route = useRoute()
+const router = useRouter()
 onMounted(() => store.fetchScanResult())
 
 const MANIFEST_FILES = new Set([
@@ -54,17 +57,54 @@ function pathExcludeOptions(filePath: string): string[] {
   return options
 }
 
-const currentIndex = ref(0)
+// Navigation path: array of PURLs from the URL.
+// PURLs are joined with ';' as separator (PURLs never contain ';').
+// Vue Router decodes path params (e.g. %40 → @), so navigationPath entries
+// are already decoded. Stored PURLs from ORT may use %40 for scoped npm
+// packages, so comparisons always decode both sides.
+const navigationPath = computed<string[]>(() => {
+  const raw = (route.params.path as string) ?? ''
+  if (!raw) return []
+  return raw.split(';').filter(Boolean)
+})
 
-watch(
-  () => store.packages,
-  () => {
-    currentIndex.value = 0
-  },
-)
+const currentPackage = computed(() => {
+  const purl = navigationPath.value.at(-1)
+  if (!purl) return null
+  const decoded = decodeURIComponent(purl)
+  return store.packages.find((p) => decodeURIComponent(p.purl) === decoded) ?? null
+})
 
-const currentPackage = computed(() => store.packages[currentIndex.value])
-const total = computed(() => store.packages.length)
+const purlToPackage = computed(() => {
+  // Key by decoded PURL so lookups work regardless of %40 vs @ encoding.
+  const map = new Map<string, Package>()
+  for (const p of store.packages) map.set(decodeURIComponent(p.purl), p)
+  return map
+})
+
+function purlPath(purls: string[]): string {
+  return '/review/' + purls.join(';')
+}
+
+function navigateToDep(depId: string) {
+  const pkg = store.packages.find((p) => p.id === depId)
+  if (!pkg?.purl) return
+  const newPath = [...navigationPath.value, pkg.purl]
+  router.push(purlPath(newPath))
+}
+
+function navigateToRoot(purl: string) {
+  router.push(purlPath([purl]))
+}
+
+// Dependencies of the current package (as package objects)
+const currentDeps = computed<Package[]>(() => {
+  if (!currentPackage.value) return []
+  const depIds = store.dependencyMap[currentPackage.value.id] ?? []
+  return depIds
+    .map((id) => store.packages.find((p) => p.id === id))
+    .filter((p): p is Package => !!p)
+})
 
 const registryUrl = computed(() => {
   const purl = currentPackage.value?.purl
@@ -371,371 +411,403 @@ watch(
     <div v-else-if="store.error" class="text-red-500">Error: {{ store.error }}</div>
 
     <template v-else-if="store.packages.length">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-xl font-semibold">Package {{ currentIndex + 1 }} of {{ total }}</h1>
-        <div class="flex gap-2">
-          <button
-            class="px-3 py-1 border rounded disabled:opacity-40"
-            :disabled="currentIndex === 0"
-            @click="currentIndex--"
-          >
-            ← Prev
-          </button>
-          <button
-            class="px-3 py-1 border rounded disabled:opacity-40"
-            :disabled="currentIndex === total - 1"
-            @click="currentIndex++"
-          >
-            Next →
-          </button>
-        </div>
-      </div>
+      <!-- Root package list -->
+      <template v-if="!currentPackage">
+        <h1 class="text-xl font-semibold mb-4">Select a package to review</h1>
+        <ul class="flex flex-col gap-1">
+          <li v-for="rootId in store.rootPackageIds" :key="rootId">
+            <button
+              class="text-left px-3 py-2 border rounded w-full hover:bg-gray-50 font-mono text-sm"
+              @click="navigateToRoot(store.packages.find((p) => p.id === rootId)?.purl ?? '')"
+            >
+              {{ rootId }}
+            </button>
+          </li>
+        </ul>
+      </template>
 
-      <table v-if="currentPackage" class="border-collapse w-full text-sm mb-6">
-        <tbody>
-          <tr>
-            <th class="border px-3 py-1.5 text-left w-40">ID</th>
-            <td class="border px-3 py-1.5">{{ currentPackage.id }}</td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">PURL</th>
-            <td class="border px-3 py-1.5">{{ currentPackage.purl }}</td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Registry</th>
-            <td class="border px-3 py-1.5">
-              <a
-                v-if="registryUrl"
-                :href="registryUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="underline"
-                >{{ registryUrl }}</a
-              >
-            </td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Description</th>
-            <td class="border px-3 py-1.5">{{ currentPackage.description }}</td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Homepage</th>
-            <td class="border px-3 py-1.5">
-              <a
-                v-if="currentPackage.homepage_url"
-                :href="currentPackage.homepage_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="underline"
-                >{{ currentPackage.homepage_url }}</a
-              >
-            </td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">VCS</th>
-            <td class="border px-3 py-1.5">
-              <a
-                v-if="currentPackage.vcs_url"
-                :href="currentPackage.vcs_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="underline"
-                >{{ currentPackage.vcs_url }}</a
-              >
-            </td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Authors</th>
-            <td class="border px-3 py-1.5">{{ currentPackage.authors.join(', ') }}</td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Declared licenses</th>
-            <td class="border px-3 py-1.5">
-              {{
-                currentPackage.declared_licenses_processed.spdx_expression ||
-                currentPackage.declared_licenses.join(', ')
-              }}
-            </td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Concluded license</th>
-            <td class="border px-3 py-1.5">
-              <template v-if="currentCuration?.concluded_license && !showCurationForm">
-                <span class="font-mono">{{ currentCuration.concluded_license }}</span>
-                <span v-if="currentCuration.comment" class="text-gray-400 ml-2 text-xs">{{
-                  currentCuration.comment
-                }}</span>
-                <button
-                  class="ml-2 text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
-                  @click="openCurationForm"
+      <template v-else>
+        <!-- Breadcrumb -->
+        <nav
+          v-if="navigationPath.length > 1"
+          class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap"
+        >
+          <template v-for="(purl, i) in navigationPath" :key="purl">
+            <span v-if="i > 0" class="text-gray-300">/</span>
+            <button
+              v-if="i < navigationPath.length - 1"
+              class="hover:underline"
+              @click="router.push(purlPath(navigationPath.slice(0, i + 1)))"
+            >
+              {{ purlToPackage.get(purl)?.id ?? purl }}
+            </button>
+            <span v-else class="text-gray-800 font-medium">{{
+              purlToPackage.get(purl)?.id ?? purl
+            }}</span>
+          </template>
+        </nav>
+
+        <table v-if="currentPackage" class="border-collapse w-full text-sm mb-6">
+          <tbody>
+            <tr>
+              <th class="border px-3 py-1.5 text-left w-40">ID</th>
+              <td class="border px-3 py-1.5">{{ currentPackage.id }}</td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">PURL</th>
+              <td class="border px-3 py-1.5">{{ currentPackage.purl }}</td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Registry</th>
+              <td class="border px-3 py-1.5">
+                <a
+                  v-if="registryUrl"
+                  :href="registryUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline"
+                  >{{ registryUrl }}</a
                 >
-                  Edit
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Description</th>
+              <td class="border px-3 py-1.5">{{ currentPackage.description }}</td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Homepage</th>
+              <td class="border px-3 py-1.5">
+                <a
+                  v-if="currentPackage.homepage_url"
+                  :href="currentPackage.homepage_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline"
+                  >{{ currentPackage.homepage_url }}</a
+                >
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">VCS</th>
+              <td class="border px-3 py-1.5">
+                <a
+                  v-if="currentPackage.vcs_url"
+                  :href="currentPackage.vcs_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline"
+                  >{{ currentPackage.vcs_url }}</a
+                >
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Authors</th>
+              <td class="border px-3 py-1.5">{{ currentPackage.authors.join(', ') }}</td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Declared licenses</th>
+              <td class="border px-3 py-1.5">
+                {{
+                  currentPackage.declared_licenses_processed.spdx_expression ||
+                  currentPackage.declared_licenses.join(', ')
+                }}
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Concluded license</th>
+              <td class="border px-3 py-1.5">
+                <template v-if="currentCuration?.concluded_license && !showCurationForm">
+                  <span class="font-mono">{{ currentCuration.concluded_license }}</span>
+                  <span v-if="currentCuration.comment" class="text-gray-400 ml-2 text-xs">{{
+                    currentCuration.comment
+                  }}</span>
+                  <button
+                    class="ml-2 text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
+                    @click="openCurationForm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    class="ml-1 text-xs text-gray-400 hover:text-red-500"
+                    @click="store.removeCuration(currentPackage!.id)"
+                  >
+                    ✕
+                  </button>
+                </template>
+                <template v-else-if="showCurationForm">
+                  <div class="flex flex-wrap gap-2 items-center">
+                    <input
+                      v-model="curationLicense"
+                      placeholder="SPDX expression"
+                      class="border rounded px-2 py-0.5 text-xs font-mono"
+                    />
+                    <input
+                      v-model="curationComment"
+                      placeholder="Comment (optional)"
+                      class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
+                    />
+                    <button
+                      class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
+                      @click="confirmCuration"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      class="text-xs text-gray-400 hover:text-gray-600"
+                      @click="showCurationForm = false"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </template>
+                <template v-else>
+                  <button
+                    class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                    @click="openTrustForm"
+                  >
+                    Trust declared license
+                  </button>
+                  <button
+                    class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                    @click="openCurationForm"
+                  >
+                    Conclude license
+                  </button>
+                </template>
+              </td>
+            </tr>
+            <tr v-if="currentDeps.length">
+              <th class="border px-3 py-1.5 text-left align-top">Dependencies</th>
+              <td class="border px-3 py-1.5">
+                <ul class="flex flex-col gap-0.5">
+                  <li v-for="dep in currentDeps" :key="dep.id">
+                    <button
+                      class="font-mono text-xs hover:underline text-left"
+                      @click="navigateToDep(dep.id)"
+                    >
+                      {{ dep.id }}
+                    </button>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
+              <td class="border px-3 py-1.5">
+                <span v-if="downloadsLoading">…</span>
+                <span v-else-if="weeklyDownloads !== null">{{
+                  weeklyDownloads.toLocaleString()
+                }}</span>
+                <span v-else>—</span>
+              </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">GitHub stars</th>
+              <td class="border px-3 py-1.5">
+                <span v-if="starsLoading">…</span>
+                <span v-else-if="githubStars !== null">{{ githubStars.toLocaleString() }}</span>
+                <span v-else>—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
+          <div
+            v-if="vcsSiblings.length"
+            class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+          >
+            This package originates from the same source repository as other packages in your
+            dependencies. Thus the license findings also apply to those packages:
+            <span v-for="(sibling, i) in vcsSiblings" :key="sibling" class="font-mono"
+              >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
+            >.
+          </div>
+          <h2 class="text-base font-semibold">License findings</h2>
+          <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
+            No findings need review.
+          </div>
+          <template v-else-if="currentFinding">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium">
+                Finding {{ findingIndex + 1 }} of {{ totalFindings
+                }}<span
+                  v-if="showExcludeForm && previewExcludeCount(excludeFormPattern) > 0"
+                  class="text-gray-400 ml-1"
+                  >−{{ previewExcludeCount(excludeFormPattern) }}</span
+                >
+              </h3>
+              <div class="flex gap-2">
+                <button
+                  class="px-3 py-1 border rounded disabled:opacity-40"
+                  :disabled="findingIndex === 0"
+                  @click="findingIndex--"
+                >
+                  ← Prev
                 </button>
                 <button
-                  class="ml-1 text-xs text-gray-400 hover:text-red-500"
-                  @click="store.removeCuration(currentPackage!.id)"
+                  class="px-3 py-1 border rounded disabled:opacity-40"
+                  :disabled="findingIndex >= totalFindings - 1"
+                  @click="findingIndex++"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+            <div
+              v-if="currentExcludes.length"
+              class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
+            >
+              <span class="text-gray-500 font-medium"
+                >Path excludes active for this package ({{ currentExcludes.length }}):</span
+              >
+              <div
+                v-for="exc in currentExcludes"
+                :key="exc.pattern"
+                class="flex items-center gap-2"
+              >
+                <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
+                <span class="text-gray-500">{{ exc.reason }}</span>
+                <button
+                  class="ml-auto text-gray-400 hover:text-red-500"
+                  @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
                 >
                   ✕
                 </button>
-              </template>
-              <template v-else-if="showCurationForm">
-                <div class="flex flex-wrap gap-2 items-center">
-                  <input
-                    v-model="curationLicense"
-                    placeholder="SPDX expression"
-                    class="border rounded px-2 py-0.5 text-xs font-mono"
-                  />
-                  <input
-                    v-model="curationComment"
-                    placeholder="Comment (optional)"
-                    class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
-                  />
+              </div>
+            </div>
+            <div class="border rounded">
+              <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
+                <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
+                <span class="text-gray-500"
+                  >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
+                    currentFinding.location.end_line
+                  }}</span
+                >
+                <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
+                <template v-if="siblingFindingsInFile.length">
+                  <span class="text-gray-300">|</span>
+                  <span class="text-gray-400 text-xs">Also in file:</span>
                   <button
-                    class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
-                    @click="confirmCuration"
+                    v-for="(f, i) in siblingFindingsInFile"
+                    :key="i"
+                    class="text-xs border rounded px-1.5 py-0.5 font-mono"
+                    :class="
+                      reviewFindings.indexOf(f) !== -1
+                        ? 'text-gray-600 hover:bg-gray-100 cursor-pointer'
+                        : 'text-gray-400 cursor-default'
+                    "
+                    :disabled="reviewFindings.indexOf(f) === -1"
+                    @click="
+                      reviewFindings.indexOf(f) !== -1 && (findingIndex = reviewFindings.indexOf(f))
+                    "
                   >
-                    Confirm
+                    {{ f.license }} | {{ f.score }}
                   </button>
-                  <button
-                    class="text-xs text-gray-400 hover:text-gray-600"
-                    @click="showCurationForm = false"
+                </template>
+                <button
+                  v-if="!showExcludeForm"
+                  class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                  @click="openExcludeForm"
+                >
+                  Exclude path
+                </button>
+              </div>
+              <div
+                v-if="showExcludeForm"
+                class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
+              >
+                <select v-model="excludeFormPattern" class="border rounded px-2 py-1 text-xs">
+                  <option
+                    v-for="opt in pathExcludeOptions(currentFinding.location.path)"
+                    :key="opt"
+                    :value="opt"
                   >
-                    Cancel
-                  </button>
-                </div>
-              </template>
-              <template v-else>
+                    {{ opt }}
+                  </option>
+                </select>
+                <select v-model="excludeFormReason" class="border rounded px-2 py-1 text-xs">
+                  <option>TEST_TOOL_OF</option>
+                  <option>DOCUMENTATION_OF</option>
+                  <option>BUILD_TOOL_OF</option>
+                  <option>DEV_TOOL_OF</option>
+                  <option>OTHER</option>
+                </select>
+                <input
+                  v-model="excludeFormComment"
+                  placeholder="Comment (optional)"
+                  class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
+                />
                 <button
-                  class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                  @click="openTrustForm"
+                  class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
+                  @click="confirmExclude"
                 >
-                  Trust declared license
+                  Confirm
                 </button>
                 <button
-                  class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                  @click="openCurationForm"
+                  class="text-xs text-gray-400 hover:text-gray-600"
+                  @click="showExcludeForm = false"
                 >
-                  Conclude license
+                  Cancel
                 </button>
-              </template>
-            </td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left"># Dependencies</th>
-            <td class="border px-3 py-1.5">{{ currentPackage.dependency_count }}</td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
-            <td class="border px-3 py-1.5">
-              <span v-if="downloadsLoading">…</span>
-              <span v-else-if="weeklyDownloads !== null">{{
-                weeklyDownloads.toLocaleString()
-              }}</span>
-              <span v-else>—</span>
-            </td>
-          </tr>
-          <tr>
-            <th class="border px-3 py-1.5 text-left">GitHub stars</th>
-            <td class="border px-3 py-1.5">
-              <span v-if="starsLoading">…</span>
-              <span v-else-if="githubStars !== null">{{ githubStars.toLocaleString() }}</span>
-              <span v-else>—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
-        <div
-          v-if="vcsSiblings.length"
-          class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
-        >
-          This package originates from the same source repository as other packages in your
-          dependencies. Thus the license findings also apply to those packages:
-          <span v-for="(sibling, i) in vcsSiblings" :key="sibling" class="font-mono"
-            >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
-          >.
-        </div>
-        <h2 class="text-base font-semibold">License findings</h2>
-        <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
-          No findings need review.
-        </div>
-        <template v-else-if="currentFinding">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-medium">
-              Finding {{ findingIndex + 1 }} of {{ totalFindings
-              }}<span
-                v-if="showExcludeForm && previewExcludeCount(excludeFormPattern) > 0"
-                class="text-gray-400 ml-1"
-                >−{{ previewExcludeCount(excludeFormPattern) }}</span
-              >
-            </h3>
-            <div class="flex gap-2">
-              <button
-                class="px-3 py-1 border rounded disabled:opacity-40"
-                :disabled="findingIndex === 0"
-                @click="findingIndex--"
-              >
-                ← Prev
-              </button>
-              <button
-                class="px-3 py-1 border rounded disabled:opacity-40"
-                :disabled="findingIndex >= totalFindings - 1"
-                @click="findingIndex++"
-              >
-                Next →
-              </button>
+              </div>
+              <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
+              <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
+                Could not load file.
+              </div>
+              <pre
+                v-else
+                class="overflow-x-auto text-xs"
+              ><div v-if="(fileContent[0]?.number ?? 0) > 1" class="flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 cursor-pointer select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></div><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><div v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" class="flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 cursor-pointer select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></div></pre>
             </div>
-          </div>
-          <div
-            v-if="currentExcludes.length"
-            class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
-          >
-            <span class="text-gray-500 font-medium"
-              >Path excludes active for this package ({{ currentExcludes.length }}):</span
-            >
-            <div v-for="exc in currentExcludes" :key="exc.pattern" class="flex items-center gap-2">
-              <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
-              <span class="text-gray-500">{{ exc.reason }}</span>
-              <button
-                class="ml-auto text-gray-400 hover:text-red-500"
-                @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
-              >
-                ✕
-              </button>
+            <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
+              Loading canonical text…
             </div>
-          </div>
-          <div class="border rounded">
-            <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
-              <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
-              <span class="text-gray-500"
-                >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
-                  currentFinding.location.end_line
-                }}</span
-              >
-              <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
-              <template v-if="siblingFindingsInFile.length">
-                <span class="text-gray-300">|</span>
-                <span class="text-gray-400 text-xs">Also in file:</span>
-                <button
-                  v-for="(f, i) in siblingFindingsInFile"
-                  :key="i"
-                  class="text-xs border rounded px-1.5 py-0.5 font-mono"
-                  :class="
-                    reviewFindings.indexOf(f) !== -1
-                      ? 'text-gray-600 hover:bg-gray-100 cursor-pointer'
-                      : 'text-gray-400 cursor-default'
-                  "
-                  :disabled="reviewFindings.indexOf(f) === -1"
-                  @click="
-                    reviewFindings.indexOf(f) !== -1 && (findingIndex = reviewFindings.indexOf(f))
-                  "
-                >
-                  {{ f.license }} | {{ f.score }}
-                </button>
-              </template>
-              <button
-                v-if="!showExcludeForm"
-                class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                @click="openExcludeForm"
-              >
-                Exclude path
-              </button>
-            </div>
-            <div
-              v-if="showExcludeForm"
-              class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
-            >
-              <select v-model="excludeFormPattern" class="border rounded px-2 py-1 text-xs">
-                <option
-                  v-for="opt in pathExcludeOptions(currentFinding.location.path)"
-                  :key="opt"
-                  :value="opt"
-                >
-                  {{ opt }}
-                </option>
-              </select>
-              <select v-model="excludeFormReason" class="border rounded px-2 py-1 text-xs">
-                <option>TEST_TOOL_OF</option>
-                <option>DOCUMENTATION_OF</option>
-                <option>BUILD_TOOL_OF</option>
-                <option>DEV_TOOL_OF</option>
-                <option>OTHER</option>
-              </select>
-              <input
-                v-model="excludeFormComment"
-                placeholder="Comment (optional)"
-                class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
-              />
-              <button
-                class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
-                @click="confirmExclude"
-              >
-                Confirm
-              </button>
-              <button
-                class="text-xs text-gray-400 hover:text-gray-600"
-                @click="showExcludeForm = false"
-              >
-                Cancel
-              </button>
-            </div>
-            <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
-            <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
-              Could not load file.
-            </div>
-            <pre
-              v-else
-              class="overflow-x-auto text-xs"
-            ><div v-if="(fileContent[0]?.number ?? 0) > 1" class="flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 cursor-pointer select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></div><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><div v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" class="flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 cursor-pointer select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></div></pre>
-          </div>
-          <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
-            Loading canonical text…
-          </div>
-          <div v-else-if="wordDiff" class="border rounded mt-2">
-            <div class="px-3 py-2 text-sm border-b text-gray-500">
-              Diff vs. canonical
-              <span class="font-mono">{{ currentFinding.license }}</span>
-            </div>
-            <pre
-              class="overflow-x-auto text-xs px-3 py-2"
-            ><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
+            <div v-else-if="wordDiff" class="border rounded mt-2">
+              <div class="px-3 py-2 text-sm border-b text-gray-500">
+                Diff vs. canonical
+                <span class="font-mono">{{ currentFinding.license }}</span>
+              </div>
+              <pre
+                class="overflow-x-auto text-xs px-3 py-2"
+              ><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
                 'bg-green-100 text-green-800': change.added,
                 'bg-red-100 text-red-700 line-through': change.removed,
               }">{{ change.value }}</span></template></pre>
-          </div>
-        </template>
-        <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
-          <div
-            v-for="[license, count] in hiddenByLicense"
-            :key="license"
-            class="text-sm text-gray-400"
-          >
-            {{ count }} finding{{ count === 1 ? '' : 's' }} of
-            <span class="font-mono">{{ license }}</span> with score 100 hidden
-            <button
-              v-if="!showHidden"
-              class="ml-1 underline text-gray-500"
-              @click="showHidden = true"
-            >
-              show
-            </button>
-          </div>
-          <div v-if="showHidden">
-            <button class="text-sm underline text-gray-500 mb-1" @click="showHidden = false">
-              hide
-            </button>
+            </div>
+          </template>
+          <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
             <div
-              v-for="f in hiddenFindings"
-              :key="`${f.location.path}:${f.location.start_line}`"
-              class="text-xs font-mono text-gray-500 px-1"
+              v-for="[license, count] in hiddenByLicense"
+              :key="license"
+              class="text-sm text-gray-400"
             >
-              <span class="font-semibold">{{ f.license }}</span>
-              {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
-              <span class="text-gray-400">score {{ f.score }}</span>
+              {{ count }} finding{{ count === 1 ? '' : 's' }} of
+              <span class="font-mono">{{ license }}</span> with score 100 hidden
+              <button
+                v-if="!showHidden"
+                class="ml-1 underline text-gray-500"
+                @click="showHidden = true"
+              >
+                show
+              </button>
+            </div>
+            <div v-if="showHidden">
+              <button class="text-sm underline text-gray-500 mb-1" @click="showHidden = false">
+                hide
+              </button>
+              <div
+                v-for="f in hiddenFindings"
+                :key="`${f.location.path}:${f.location.start_line}`"
+                class="text-xs font-mono text-gray-500 px-1"
+              >
+                <span class="font-semibold">{{ f.license }}</span>
+                {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+                <span class="text-gray-400">score {{ f.score }}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </template>
     </template>
   </main>
 </template>
