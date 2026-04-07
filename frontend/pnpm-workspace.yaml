@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 minimumReleaseAge: 10080
 trustPolicy: no-downgrade
 strictPeerDependencies: true
