@@ -1,0 +1,4 @@
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+strictPeerDependencies: true
+trustPolicyIgnoreAfter: 262980 # 6 months

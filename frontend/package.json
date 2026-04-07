@@ -5,12 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "lint": "run-s lint:*",
+    "lint": "pnpm run lint:oxlint && pnpm run lint:eslint",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src/"
@@ -35,8 +34,6 @@
     "eslint-plugin-oxlint": "~1.50.0",
     "eslint-plugin-playwright": "^2.8.0",
     "eslint-plugin-vue": "~10.8.0",
-    "jiti": "^2.6.1",
-    "npm-run-all2": "^8.0.4",
     "oxlint": "~1.50.0",
     "prettier": "3.8.1",
     "tailwindcss": "^4.2.1",
@@ -46,7 +43,7 @@
     "vue-tsc": "^3.2.5"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "24"
   },
   "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
 }
