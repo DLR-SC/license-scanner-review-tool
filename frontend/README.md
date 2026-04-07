@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 # frontend
 
+The frontend is responsible for providing a user interface for the review process.
+
 ## Project Setup
 
 ```sh

@@ -6,6 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 # server
 
+The server is responsible for:
+
+- CRUD operations on the ORT files
+  - reading the scanner results and providing them to the frontend
+  - writing the review results (curations) from the frontend back to the relevant ORT config files
+- requesting additional information about the scanned dependencies from external sources (e.g. GitHub, package registries, etc.) to provide more context for the review process
+
 ## Development
 
 ### Install dependencies
