@@ -18,7 +18,7 @@ The server is responsible for:
 ### Install dependencies
 
 ```sh
-uv synch
+uv sync
 ```
 
 ### Run the server

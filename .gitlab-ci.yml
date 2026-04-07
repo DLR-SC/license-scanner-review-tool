@@ -1,0 +1,67 @@
+.frontend:
+  image: node:24
+  needs: []
+  before_script:
+    - corepack enable
+    - cd frontend
+    - pnpm install --frozen-lockfile
+  cache:
+    key:
+      files:
+        - frontend/pnpm-lock.yaml
+    paths:
+      - frontend/node_modules/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+frontend:build:
+  extends: .frontend
+  script:
+    - pnpm build
+
+frontend:type-check:
+  extends: .frontend
+  script:
+    - pnpm type-check
+
+frontend:lint:
+  extends: .frontend
+  script:
+    - pnpm lint
+
+frontend:format-check:
+  extends: .frontend
+  script:
+    - pnpm format:check
+
+frontend:test-e2e:
+  extends: .frontend
+  image: mcr.microsoft.com/playwright:v1.50.0-noble
+  script:
+    - pnpm test:e2e
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+
+server:test:
+  image: python:3.12
+  needs: []
+  before_script:
+    - pip install uv
+    - cd server
+  script:
+    - uv run pytest
+  cache:
+    key:
+      files:
+        - server/uv.lock
+    paths:
+      - ~/.cache/uv/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
