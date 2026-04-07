@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 default:
   tags:
     - docker
@@ -53,10 +57,10 @@ frontend:test-e2e:
       allow_failure: true
 
 server:test:
-  image: python:3.12
+  image: python:3.12-slim
   needs: []
   before_script:
-    - pip install uv
+    - pip install --no-cache-dir uv
     - cd server
   script:
     - uv run pytest
@@ -66,6 +70,16 @@ server:test:
         - server/uv.lock
     paths:
       - ~/.cache/uv/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+reuse-lint:
+  image: python:3.12-slim
+  before_script:
+    - pip install --no-cache-dir reuse
+  script:
+    - reuse lint
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
