@@ -1054,7 +1054,9 @@ def test_finding_curations_entry_without_curations_key_returns_empty(pkg_config_
         [
             {
                 "id": "NPM::lodash:4.0.0",
-                "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+                ],
             }
         ]
     )
@@ -1075,7 +1077,9 @@ def test_finding_curations_put_creates_entry(pkg_config_file):
     assert data["license_finding_curations"][0] == FINDING_CURATION
     written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
     assert written[0]["id"] == "NPM::lodash:4.0.0"
-    assert written[0]["license_finding_curations"][0]["path"] == FINDING_CURATION["path"]
+    assert (
+        written[0]["license_finding_curations"][0]["path"] == FINDING_CURATION["path"]
+    )
     assert (
         written[0]["license_finding_curations"][0]["concluded_license"]
         == FINDING_CURATION["concluded_license"]
@@ -1083,16 +1087,27 @@ def test_finding_curations_put_creates_entry(pkg_config_file):
 
 
 def test_finding_curations_put_two_different_findings(pkg_config_file):
-    client.put("/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION})
-    client.put("/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION_2})
+    client.put(
+        "/finding-curations",
+        json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
+    )
+    client.put(
+        "/finding-curations",
+        json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION_2},
+    )
     response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
     assert len(response.json()["license_finding_curations"]) == 2
 
 
 def test_finding_curations_put_upserts_same_key(pkg_config_file):
-    client.put("/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION})
+    client.put(
+        "/finding-curations",
+        json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
+    )
     updated = {**FINDING_CURATION, "concluded_license": "MIT", "comment": "updated"}
-    client.put("/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **updated})
+    client.put(
+        "/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **updated}
+    )
     response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
     curations = response.json()["license_finding_curations"]
     assert len(curations) == 1
@@ -1105,11 +1120,16 @@ def test_finding_curations_put_preserves_path_excludes(pkg_config_file):
         [
             {
                 "id": "NPM::lodash:4.0.0",
-                "path_excludes": [{"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}],
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+                ],
             }
         ]
     )
-    client.put("/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION})
+    client.put(
+        "/finding-curations",
+        json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
+    )
     written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
     entry = written[0]
     assert len(entry["path_excludes"]) == 1
@@ -1119,7 +1139,12 @@ def test_finding_curations_put_preserves_path_excludes(pkg_config_file):
 
 def test_finding_curations_delete_removes_entry(pkg_config_file):
     pkg_config_file(
-        [{"id": "NPM::lodash:4.0.0", "license_finding_curations": [FINDING_CURATION, FINDING_CURATION_2]}]
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "license_finding_curations": [FINDING_CURATION, FINDING_CURATION_2],
+            }
+        ]
     )
     response = client.delete(
         f"/finding-curations"
