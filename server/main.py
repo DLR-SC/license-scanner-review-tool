@@ -223,6 +223,32 @@ def _write_curations(curations: list[dict]) -> None:
         yaml.dump(curations, f, default_flow_style=False, allow_unicode=True)
 
 
+class LicenseFindingCuration(BaseModel):
+    path: str
+    start_lines: str
+    line_count: int
+    detected_license: str
+    reason: str = ""
+    comment: str = ""
+    concluded_license: str
+
+
+class PackageFindingCurations(BaseModel):
+    package_id: str
+    license_finding_curations: list[LicenseFindingCuration]
+
+
+class SetFindingCurationRequest(BaseModel):
+    package_id: str
+    path: str
+    start_lines: str
+    line_count: int
+    detected_license: str
+    reason: str = ""
+    comment: str = ""
+    concluded_license: str
+
+
 class FileContentLine(BaseModel):
     number: int
     content: str
@@ -600,3 +626,96 @@ def remove_license_curation(package_id: str):
     curations = [c for c in curations if c.get("id") != package_id]
     _write_curations(curations)
     return PackageCuration(package_id=package_id)
+
+
+def _parse_finding_curations(entry: dict) -> list[LicenseFindingCuration]:
+    return [
+        LicenseFindingCuration(
+            path=c.get("path", ""),
+            start_lines=str(c.get("start_lines", "")),
+            line_count=int(c.get("line_count", 0)),
+            detected_license=c.get("detected_license", ""),
+            reason=c.get("reason", ""),
+            comment=c.get("comment", ""),
+            concluded_license=c.get("concluded_license", ""),
+        )
+        for c in entry.get("license_finding_curations") or []
+    ]
+
+
+@app.get("/finding-curations", response_model=PackageFindingCurations)
+def get_finding_curations(package_id: str):
+    configs = _read_pkg_configs()
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        return PackageFindingCurations(
+            package_id=package_id, license_finding_curations=[]
+        )
+    return PackageFindingCurations(
+        package_id=package_id,
+        license_finding_curations=_parse_finding_curations(entry),
+    )
+
+
+@app.put("/finding-curations", response_model=PackageFindingCurations)
+def set_finding_curation(req: SetFindingCurationRequest):
+    configs = _read_pkg_configs()
+    entry = next((c for c in configs if c.get("id") == req.package_id), None)
+    if entry is None:
+        entry = {"id": req.package_id}
+        configs.append(entry)
+    curations: list[dict] = entry.setdefault("license_finding_curations", [])
+    existing = next(
+        (
+            c
+            for c in curations
+            if c.get("path") == req.path
+            and str(c.get("start_lines", "")) == req.start_lines
+            and c.get("detected_license") == req.detected_license
+        ),
+        None,
+    )
+    new_entry = {
+        "path": req.path,
+        "start_lines": req.start_lines,
+        "line_count": req.line_count,
+        "detected_license": req.detected_license,
+        "reason": req.reason,
+        "comment": req.comment,
+        "concluded_license": req.concluded_license,
+    }
+    if existing is not None:
+        existing.update(new_entry)
+    else:
+        curations.append(new_entry)
+    _write_pkg_configs(configs)
+    return PackageFindingCurations(
+        package_id=req.package_id,
+        license_finding_curations=_parse_finding_curations(entry),
+    )
+
+
+@app.delete("/finding-curations", response_model=PackageFindingCurations)
+def remove_finding_curation(
+    package_id: str, path: str, start_lines: str, detected_license: str
+):
+    configs = _read_pkg_configs()
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        return PackageFindingCurations(
+            package_id=package_id, license_finding_curations=[]
+        )
+    entry["license_finding_curations"] = [
+        c
+        for c in entry.get("license_finding_curations") or []
+        if not (
+            c.get("path") == path
+            and str(c.get("start_lines", "")) == start_lines
+            and c.get("detected_license") == detected_license
+        )
+    ]
+    _write_pkg_configs(configs)
+    return PackageFindingCurations(
+        package_id=package_id,
+        license_finding_curations=_parse_finding_curations(entry),
+    )

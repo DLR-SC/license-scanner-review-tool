@@ -10,7 +10,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
 import { minimatch } from 'minimatch'
-import { useScanResultStore, type LicenseFinding, type Package } from '@/stores/scanResult'
+import {
+  useScanResultStore,
+  type LicenseFinding,
+  type LicenseFindingCuration,
+  type Package,
+} from '@/stores/scanResult'
 
 const store = useScanResultStore()
 const route = useRoute()
@@ -133,11 +138,13 @@ const currentExcludes = computed(() => store.pathExcludes[currentPackage.value?.
 const reviewFindings = computed(() => {
   const spdx = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
   const excludePatterns = currentExcludes.value.map((e) => e.pattern)
+  const curationsMap = currentFindingCurationsMap.value
   return allFindings.value
     .filter(
       (f) =>
         (f.score < 100 || !spdx.includes(f.license)) &&
-        !excludePatterns.some((p) => minimatch(f.location.path, p)),
+        !excludePatterns.some((p) => minimatch(f.location.path, p)) &&
+        !curationsMap.has(findingCurationKey(f)),
     )
     .slice()
     .sort((a, b) => {
@@ -145,6 +152,10 @@ const reviewFindings = computed(() => {
       return tierDiff !== 0 ? tierDiff : b.score - a.score
     })
 })
+
+const reviewedFindings = computed(() =>
+  allFindings.value.filter((f) => currentFindingCurationsMap.value.has(findingCurationKey(f))),
+)
 
 function previewExcludeCount(pattern: string): number {
   return reviewFindings.value.filter((f) => minimatch(f.location.path, pattern)).length
@@ -197,6 +208,29 @@ const curationLicense = ref('')
 
 const currentCuration = computed(() => store.curations[currentPackage.value?.id ?? ''] ?? null)
 
+function findingCurationKey(f: LicenseFinding): string {
+  return `${f.location.path}:${f.location.start_line}:${f.license}`
+}
+
+const currentFindingCurations = computed(
+  () => store.findingCurations[currentPackage.value?.id ?? ''] ?? [],
+)
+
+const currentFindingCurationsMap = computed(() => {
+  const map = new Map<string, LicenseFindingCuration>()
+  for (const c of currentFindingCurations.value) {
+    map.set(`${c.path}:${c.start_lines}:${c.detected_license}`, c)
+  }
+  return map
+})
+
+const showDecisionForm = ref(false)
+const decisionLicense = ref('')
+const decisionComment = ref('')
+const decisionReason = ref('CODE')
+
+const showReviewed = ref(false)
+
 function openTrustForm() {
   curationLicense.value = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
   curationComment.value = 'Declared license is correct'
@@ -231,6 +265,52 @@ async function confirmExclude() {
     comment: excludeFormComment.value,
   })
   showExcludeForm.value = false
+}
+
+async function confirmFinding(f: LicenseFinding, concludedLicense: string) {
+  if (!currentPackage.value) return
+  await store.setFindingCuration(currentPackage.value.id, {
+    path: f.location.path,
+    start_lines: String(f.location.start_line),
+    line_count: f.location.end_line - f.location.start_line + 1,
+    detected_license: f.license,
+    reason: 'CODE',
+    comment: '',
+    concluded_license: concludedLicense,
+  })
+}
+
+async function confirmDecisionForm() {
+  if (!currentPackage.value || !currentFinding.value) return
+  await store.setFindingCuration(currentPackage.value.id, {
+    path: currentFinding.value.location.path,
+    start_lines: String(currentFinding.value.location.start_line),
+    line_count:
+      currentFinding.value.location.end_line - currentFinding.value.location.start_line + 1,
+    detected_license: currentFinding.value.license,
+    reason: decisionReason.value,
+    comment: decisionComment.value,
+    concluded_license: decisionLicense.value,
+  })
+  showDecisionForm.value = false
+}
+
+function openDecisionForm() {
+  if (!currentFinding.value) return
+  decisionLicense.value = currentFinding.value.license
+  decisionComment.value = ''
+  decisionReason.value = 'CODE'
+  showDecisionForm.value = true
+}
+
+async function removeFindingCuration(f: LicenseFinding) {
+  if (!currentPackage.value) return
+  await store.removeFindingCuration(
+    currentPackage.value.id,
+    f.location.path,
+    String(f.location.start_line),
+    f.license,
+  )
 }
 
 const fileContent = ref<Array<{ number: number; content: string; highlighted: boolean }> | null>(
@@ -319,6 +399,7 @@ watch(
     contextBelow.value = 5
     fileTotalLines.value = 0
     showExcludeForm.value = false
+    showDecisionForm.value = false
     if (finding) {
       loadFinding(finding)
       if (isWholeLicenseText(finding)) loadCanonicalText(finding.license)
@@ -341,9 +422,12 @@ watch(currentPackage, (pkg) => {
   showHidden.value = false
   showExcludeForm.value = false
   showCurationForm.value = false
+  showDecisionForm.value = false
+  showReviewed.value = false
   if (pkg) {
     store.fetchPathExcludes(pkg.id)
     store.fetchCuration(pkg.id)
+    store.fetchFindingCurations(pkg.id)
   }
 })
 
@@ -711,6 +795,53 @@ watch(
                 >
                   Exclude path
                 </button>
+                <template v-if="!showDecisionForm">
+                  <button
+                    class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                    @click="confirmFinding(currentFinding, currentFinding.license)"
+                  >
+                    Confirm as {{ currentFinding.license }}
+                  </button>
+                  <button
+                    class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                    @click="openDecisionForm"
+                  >
+                    Other…
+                  </button>
+                </template>
+              </div>
+              <div
+                v-if="showDecisionForm"
+                class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
+              >
+                <input
+                  v-model="decisionLicense"
+                  placeholder="SPDX expression or NONE"
+                  class="border rounded px-2 py-1 text-xs font-mono flex-1 min-w-0"
+                />
+                <select v-model="decisionReason" class="border rounded px-2 py-1 text-xs">
+                  <option>CODE</option>
+                  <option>DOCUMENTATION</option>
+                  <option>DATA_OF</option>
+                  <option>OTHER</option>
+                </select>
+                <input
+                  v-model="decisionComment"
+                  placeholder="Comment (optional)"
+                  class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
+                />
+                <button
+                  class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
+                  @click="confirmDecisionForm"
+                >
+                  Confirm
+                </button>
+                <button
+                  class="text-xs text-gray-400 hover:text-gray-600"
+                  @click="showDecisionForm = false"
+                >
+                  Cancel
+                </button>
               </div>
               <div
                 v-if="showExcludeForm"
@@ -803,6 +934,46 @@ watch(
                 <span class="font-semibold">{{ f.license }}</span>
                 {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
                 <span class="text-gray-400">score {{ f.score }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="reviewedFindings.length" class="mt-3 flex flex-col gap-1">
+            <div class="text-sm text-gray-400">
+              {{ reviewedFindings.length }} finding{{ reviewedFindings.length === 1 ? '' : 's' }}
+              marked as reviewed
+              <button
+                v-if="!showReviewed"
+                class="ml-1 underline text-gray-500"
+                @click="showReviewed = true"
+              >
+                show
+              </button>
+            </div>
+            <div v-if="showReviewed">
+              <button class="text-sm underline text-gray-500 mb-1" @click="showReviewed = false">
+                hide
+              </button>
+              <div
+                v-for="f in reviewedFindings"
+                :key="findingCurationKey(f)"
+                class="text-xs font-mono text-gray-500 px-1 flex items-center gap-2"
+              >
+                <span class="font-semibold">{{ f.license }}</span>
+                {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+                <span class="text-green-700">
+                  →
+                  {{
+                    currentFindingCurationsMap.get(findingCurationKey(f))?.concluded_license ?? '?'
+                  }}
+                </span>
+                <span
+                  v-if="currentFindingCurationsMap.get(findingCurationKey(f))?.comment"
+                  class="text-gray-400"
+                  >{{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}</span
+                >
+                <button class="text-gray-400 hover:text-red-500" @click="removeFindingCuration(f)">
+                  ✕
+                </button>
               </div>
             </div>
           </div>

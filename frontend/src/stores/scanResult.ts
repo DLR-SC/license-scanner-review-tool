@@ -104,6 +104,16 @@ export interface PackageCuration {
   concluded_license: string | null
 }
 
+export interface LicenseFindingCuration {
+  path: string
+  start_lines: string
+  line_count: number
+  detected_license: string
+  reason: string
+  comment: string
+  concluded_license: string
+}
+
 export interface OrtResult {
   repository: Repository
   projects: Project[]
@@ -120,6 +130,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
   const error = ref<string | null>(null)
   const pathExcludes = ref<Record<string, PathExclude[]>>({})
   const curations = ref<Record<string, PackageCuration>>({})
+  const findingCurations = ref<Record<string, LicenseFindingCuration[]>>({})
   const dependencyGraph = ref<OrtDependencyGraphs | null>(null)
 
   const rootPackageIds = computed<string[]>(() => {
@@ -278,6 +289,62 @@ export const useScanResultStore = defineStore('scanResult', () => {
     }
   }
 
+  async function fetchFindingCurations(packageId: string) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(`/finding-curations?package_id=${encodeURIComponent(packageId)}`, base).toString(),
+    )
+    if (res.ok) {
+      const data: { package_id: string; license_finding_curations: LicenseFindingCuration[] } =
+        await res.json()
+      findingCurations.value = {
+        ...findingCurations.value,
+        [packageId]: data.license_finding_curations,
+      }
+    }
+  }
+
+  async function setFindingCuration(packageId: string, curation: LicenseFindingCuration) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(new URL('/finding-curations', base).toString(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ package_id: packageId, ...curation }),
+    })
+    if (res.ok) {
+      const data: { package_id: string; license_finding_curations: LicenseFindingCuration[] } =
+        await res.json()
+      findingCurations.value = {
+        ...findingCurations.value,
+        [packageId]: data.license_finding_curations,
+      }
+    }
+  }
+
+  async function removeFindingCuration(
+    packageId: string,
+    path: string,
+    startLines: string,
+    detectedLicense: string,
+  ) {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(
+      new URL(
+        `/finding-curations?package_id=${encodeURIComponent(packageId)}&path=${encodeURIComponent(path)}&start_lines=${encodeURIComponent(startLines)}&detected_license=${encodeURIComponent(detectedLicense)}`,
+        base,
+      ).toString(),
+      { method: 'DELETE' },
+    )
+    if (res.ok) {
+      const data: { package_id: string; license_finding_curations: LicenseFindingCuration[] } =
+        await res.json()
+      findingCurations.value = {
+        ...findingCurations.value,
+        [packageId]: data.license_finding_curations,
+      }
+    }
+  }
+
   return {
     repository,
     projects,
@@ -287,6 +354,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
     error,
     pathExcludes,
     curations,
+    findingCurations,
     dependencyGraph,
     rootPackageIds,
     dependencyMap,
@@ -298,5 +366,8 @@ export const useScanResultStore = defineStore('scanResult', () => {
     fetchCuration,
     setCuration,
     removeCuration,
+    fetchFindingCurations,
+    setFindingCuration,
+    removeFindingCuration,
   }
 })

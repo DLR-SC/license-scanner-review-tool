@@ -151,6 +151,8 @@ export async function mockAll(
     onPathExcludesMutation?: (body: object) => object
     licenseCuration?: object
     onLicenseCurationsMutation?: (body: object) => object
+    findingCurations?: object[]
+    onFindingCurationsMutation?: (body: object) => object
   } = {},
 ) {
   const scanResult = opts.scanResult ?? makeScanResult([FINDING_TESTS_UNIT])
@@ -200,5 +202,32 @@ export async function mockAll(
       return route.fulfill({ json: opts.onLicenseCurationsMutation({ package_id: pkgId }) })
     }
     return route.fulfill({ json: { package_id: pkgId, comment: '', concluded_license: null } })
+  })
+  const findingCurations = opts.findingCurations ?? []
+  await page.route('**/finding-curations**', (route) => {
+    const method = route.request().method()
+    const url = new URL(route.request().url())
+    const pkgId = url.searchParams.get('package_id') ?? ''
+    if (method === 'GET') {
+      return route.fulfill({
+        json: { package_id: pkgId, license_finding_curations: findingCurations },
+      })
+    }
+    if (method === 'PUT' && opts.onFindingCurationsMutation) {
+      const body = JSON.parse(route.request().postData() ?? '{}')
+      return route.fulfill({ json: opts.onFindingCurationsMutation(body) })
+    }
+    if (method === 'DELETE' && opts.onFindingCurationsMutation) {
+      return route.fulfill({
+        json: opts.onFindingCurationsMutation({
+          path: url.searchParams.get('path'),
+          start_lines: url.searchParams.get('start_lines'),
+          detected_license: url.searchParams.get('detected_license'),
+        }),
+      })
+    }
+    return route.fulfill({
+      json: { package_id: pkgId, license_finding_curations: findingCurations },
+    })
   })
 }
