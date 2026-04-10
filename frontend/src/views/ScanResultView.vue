@@ -796,6 +796,28 @@ watch(
             >.
           </div>
           <h2 class="text-base font-semibold">License findings</h2>
+          <div
+            v-if="currentExcludes.length"
+            class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
+          >
+            <span class="text-gray-500 font-medium"
+              >Path excludes active for this package ({{ currentExcludes.length }}):</span
+            >
+            <div
+              v-for="exc in currentExcludes"
+              :key="exc.pattern"
+              class="flex items-center gap-2"
+            >
+              <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
+              <span class="text-gray-500">{{ exc.reason }}</span>
+              <button
+                class="ml-auto text-gray-400 hover:text-red-500"
+                @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
           <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
             No findings need review.
           </div>
@@ -823,28 +845,6 @@ watch(
                   @click="findingIndex++"
                 >
                   Next →
-                </button>
-              </div>
-            </div>
-            <div
-              v-if="currentExcludes.length"
-              class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
-            >
-              <span class="text-gray-500 font-medium"
-                >Path excludes active for this package ({{ currentExcludes.length }}):</span
-              >
-              <div
-                v-for="exc in currentExcludes"
-                :key="exc.pattern"
-                class="flex items-center gap-2"
-              >
-                <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
-                <span class="text-gray-500">{{ exc.reason }}</span>
-                <button
-                  class="ml-auto text-gray-400 hover:text-red-500"
-                  @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
-                >
-                  ✕
                 </button>
               </div>
             </div>
