@@ -72,11 +72,11 @@ test.describe('context expansion', () => {
       fileContent: { ...FILE_CONTENT_DEFAULT, lines: FILE_CONTENT_DEFAULT.lines },
     })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('↑ Load 10 more lines')).toBeVisible()
+    await expect(page.getByRole('button', { name: '↑ Load 10 more lines' })).toBeVisible()
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/file-content')),
-      page.getByText('↑ Load 10 more lines').click(),
+      page.getByRole('button', { name: '↑ Load 10 more lines' }).click(),
     ])
     expect(req.url()).toContain('context_before=15')
   })
@@ -91,17 +91,17 @@ test.describe('context expansion', () => {
     }
     await mockAll(page, { fileContent: contentFromLine1 })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('↑ Load 10 more lines')).toBeHidden()
+    await expect(page.getByRole('button', { name: '↑ Load 10 more lines' })).toBeHidden()
   })
 
   test('expand below: button visible and increases context_after', async ({ page }) => {
     await mockAll(page) // last line 10, total 100 → button should show
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('↓ Load 10 more lines')).toBeVisible()
+    await expect(page.getByRole('button', { name: '↓ Load 10 more lines' })).toBeVisible()
 
     const [req] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/file-content')),
-      page.getByText('↓ Load 10 more lines').click(),
+      page.getByRole('button', { name: '↓ Load 10 more lines' }).click(),
     ])
     expect(req.url()).toContain('context_after=15')
   })
@@ -113,7 +113,7 @@ test.describe('context expansion', () => {
     }
     await mockAll(page, { fileContent: contentAtEnd })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('↓ Load 10 more lines')).toBeHidden()
+    await expect(page.getByRole('button', { name: '↓ Load 10 more lines' })).toBeHidden()
   })
 })
 
