@@ -169,7 +169,8 @@ test('Other… form: PUT body reflects edited license, reason, and comment', asy
 
   await page.getByRole('button', { name: 'Other…' }).click()
   await page.getByPlaceholder('SPDX expression or NONE').fill('Apache-2.0')
-  await page.getByRole('combobox').selectOption('DOCUMENTATION')
+  await page.getByRole('combobox').click()
+  await page.getByRole('option', { name: /DOCUMENTATION_OF/ }).click()
   await page.getByPlaceholder('Comment (optional)').fill('scanner matched a variable name')
 
   const [req] = await Promise.all([
@@ -179,7 +180,7 @@ test('Other… form: PUT body reflects edited license, reason, and comment', asy
 
   const body = JSON.parse(req.postData() ?? '{}')
   expect(body.concluded_license).toBe('Apache-2.0')
-  expect(body.reason).toBe('DOCUMENTATION')
+  expect(body.reason).toBe('DOCUMENTATION_OF')
   expect(body.comment).toBe('scanner matched a variable name')
 })
 
