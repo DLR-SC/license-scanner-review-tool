@@ -645,18 +645,20 @@ watch(
                   </div>
                 </template>
                 <template v-else>
-                  <button
-                    class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                    @click="openTrustForm"
-                  >
-                    Trust declared license
-                  </button>
-                  <button
-                    class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                    @click="openCurationForm"
-                  >
-                    Conclude license
-                  </button>
+                  <div class="flex flex-wrap gap-2 items-center">
+                    <button
+                      class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                      @click="openTrustForm"
+                    >
+                      Trust declared license
+                    </button>
+                    <button
+                      class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                      @click="openCurationForm"
+                    >
+                      Conclude license
+                    </button>
+                  </div>
                 </template>
               </td>
             </tr>
