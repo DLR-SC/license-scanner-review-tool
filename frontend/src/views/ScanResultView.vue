@@ -499,6 +499,12 @@ watch(
   { immediate: true },
 )
 
+watch(reviewFindings, (findings) => {
+  if (findingIndex.value >= findings.length) {
+    findingIndex.value = Math.max(0, findings.length - 1)
+  }
+})
+
 watch(currentPackage, (pkg) => {
   findingIndex.value = 0
   fileContent.value = null

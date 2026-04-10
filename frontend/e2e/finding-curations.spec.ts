@@ -92,6 +92,29 @@ test('one-click confirm: finding leaves review queue', async ({ page }) => {
   await expect(page.getByText('Finding 1 of 1')).toBeVisible()
 })
 
+test('one-click confirm on last finding: index clamps to show remaining finding', async ({
+  page,
+}) => {
+  // FINDING_MANIFEST (package.json, tier 0) sorts before FINDING_TESTS_UNIT (tier 3)
+  await mockAll(page, {
+    scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_MANIFEST]),
+    onFindingCurationsMutation: (body) => ({
+      package_id: PKG1_ID,
+      license_finding_curations: [body],
+    }),
+  })
+  await navigateToPackage(page, PACKAGE_1.purl)
+
+  await page.getByRole('button', { name: 'Next →' }).click()
+  await expect(page.getByText('Finding 2 of 2')).toBeVisible()
+
+  await page.getByRole('button', { name: `Confirm as ${FINDING_TESTS_UNIT.license}` }).click()
+
+  // Index clamps to 0 — FINDING_MANIFEST is the remaining finding
+  await expect(page.getByText('Finding 1 of 1')).toBeVisible()
+  await expect(page.getByText(FINDING_MANIFEST.location.path, { exact: false })).toBeVisible()
+})
+
 test('one-click confirm: reviewed summary increments', async ({ page }) => {
   await mockAll(page, {
     onFindingCurationsMutation: (body) => ({

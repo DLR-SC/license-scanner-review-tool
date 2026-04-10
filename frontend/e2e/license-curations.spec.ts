@@ -59,7 +59,7 @@ test('confirm: PUT body correct', async ({ page }) => {
 
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'PUT' && r.url().includes('/license-curations')),
-    page.getByRole('button', { name: 'Confirm' }).click(),
+    page.getByRole('button', { name: 'Confirm', exact: true }).click(),
   ])
 
   const body = JSON.parse(req.postData() ?? '{}')
@@ -78,7 +78,7 @@ test('confirm: concluded license shown in row after PUT', async ({ page }) => {
   })
   await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
-  await page.getByRole('button', { name: 'Confirm' }).click()
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click()
 
   await expect(page.getByRole('row', { name: /Concluded license/ })).toContainText('MIT')
   await expect(page.getByPlaceholder('SPDX expression')).toBeHidden()
@@ -140,9 +140,7 @@ test('✕ sends DELETE with correct package_id', async ({ page }) => {
   await navigateToPackage(page, PACKAGE_1.purl)
 
   const [req] = await Promise.all([
-    page.waitForRequest(
-      (r) => r.method() === 'DELETE' && r.url().includes('/license-curations'),
-    ),
+    page.waitForRequest((r) => r.method() === 'DELETE' && r.url().includes('/license-curations')),
     page.getByRole('button', { name: '✕' }).click(),
   ])
 
