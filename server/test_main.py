@@ -958,6 +958,52 @@ def test_path_excludes_delete_nonexistent_pattern_returns_unchanged(pkg_config_f
     }
 
 
+def test_path_excludes_put_propagates_to_siblings(pkg_config_file, scan_result_file):
+    scan_result_file(MONOREPO_SIBLINGS_DATA)
+    client.put(
+        "/path-excludes",
+        json={
+            "package_id": "NPM::pkg-a:1.0.0",
+            "pattern": "tests/**",
+            "reason": "TEST_TOOL_OF",
+            "comment": "",
+        },
+    )
+    written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
+    entries = {e["id"]: e for e in written}
+    assert "NPM::pkg-a:1.0.0" in entries
+    assert "NPM::pkg-b:1.0.0" in entries
+    assert entries["NPM::pkg-a:1.0.0"]["path_excludes"][0]["pattern"] == "tests/**"
+    assert entries["NPM::pkg-b:1.0.0"]["path_excludes"][0]["pattern"] == "tests/**"
+
+
+def test_path_excludes_delete_propagates_to_siblings(pkg_config_file, scan_result_file):
+    scan_result_file(MONOREPO_SIBLINGS_DATA)
+    pkg_config_file(
+        [
+            {
+                "id": "NPM::pkg-a:1.0.0",
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+                ],
+            },
+            {
+                "id": "NPM::pkg-b:1.0.0",
+                "path_excludes": [
+                    {"pattern": "tests/**", "reason": "TEST_TOOL_OF", "comment": ""}
+                ],
+            },
+        ]
+    )
+    client.delete(
+        "/path-excludes?package_id=NPM%3A%3Apkg-a%3A1.0.0&pattern=tests%2F%2A%2A"
+    )
+    written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
+    entries = {e["id"]: e for e in written}
+    assert entries["NPM::pkg-a:1.0.0"].get("path_excludes", []) == []
+    assert entries["NPM::pkg-b:1.0.0"].get("path_excludes", []) == []
+
+
 # /license-curations
 
 
@@ -1288,3 +1334,88 @@ def test_finding_curations_delete_nonexistent_key_returns_unchanged(pkg_config_f
     curations = response.json()["license_finding_curations"]
     assert len(curations) == 1
     assert curations[0]["path"] == FINDING_CURATION["path"]
+
+
+MONOREPO_SIBLINGS_DATA = {
+    **BASE,
+    "analyzer": {
+        "result": {
+            "projects": [],
+            "packages": [
+                {"id": "NPM::pkg-a:1.0.0"},
+                {"id": "NPM::pkg-b:1.0.0"},
+            ],
+            "dependency_graphs": {},
+        }
+    },
+    "scanner": {
+        "provenances": [
+            {
+                "id": "NPM::pkg-a:1.0.0",
+                "package_provenance": {
+                    "vcs_info": {
+                        "url": "https://github.com/example/mono",
+                        "revision": "",
+                    },
+                    "resolved_revision": "cafebabe",
+                },
+            },
+            {
+                "id": "NPM::pkg-b:1.0.0",
+                "package_provenance": {
+                    "vcs_info": {
+                        "url": "https://github.com/example/mono",
+                        "revision": "",
+                    },
+                    "resolved_revision": "cafebabe",
+                },
+            },
+        ],
+        "scan_results": [],
+    },
+}
+
+
+def test_finding_curations_put_propagates_to_siblings(
+    pkg_config_file, scan_result_file
+):
+    scan_result_file(MONOREPO_SIBLINGS_DATA)
+    client.put(
+        "/finding-curations",
+        json={"package_id": "NPM::pkg-a:1.0.0", **FINDING_CURATION},
+    )
+    written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
+    entries = {e["id"]: e for e in written}
+    assert "NPM::pkg-a:1.0.0" in entries
+    assert "NPM::pkg-b:1.0.0" in entries
+    assert (
+        entries["NPM::pkg-a:1.0.0"]["license_finding_curations"][0]["path"]
+        == FINDING_CURATION["path"]
+    )
+    assert (
+        entries["NPM::pkg-b:1.0.0"]["license_finding_curations"][0]["path"]
+        == FINDING_CURATION["path"]
+    )
+
+
+def test_finding_curations_delete_propagates_to_siblings(
+    pkg_config_file, scan_result_file
+):
+    scan_result_file(MONOREPO_SIBLINGS_DATA)
+    pkg_config_file(
+        [
+            {"id": "NPM::pkg-a:1.0.0", "license_finding_curations": [FINDING_CURATION]},
+            {"id": "NPM::pkg-b:1.0.0", "license_finding_curations": [FINDING_CURATION]},
+        ]
+    )
+    client.delete(
+        f"/finding-curations"
+        f"?package_id=NPM%3A%3Apkg-a%3A1.0.0"
+        f"&path={FINDING_CURATION['path']}"
+        f"&start_lines={FINDING_CURATION['start_lines']}"
+        f"&detected_license={FINDING_CURATION['detected_license']}"
+    )
+    written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
+    entries = {e["id"]: e for e in written}
+    assert entries["NPM::pkg-a:1.0.0"].get("license_finding_curations", []) == []
+    assert entries["NPM::pkg-b:1.0.0"].get("license_finding_curations", []) == []

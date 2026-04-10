@@ -622,34 +622,51 @@ def get_path_excludes(package_id: str):
     return PackagePathExcludes(package_id=package_id, path_excludes=excludes)
 
 
+def _upsert_path_exclude(configs: list[dict], package_id: str, exclude: dict) -> dict:
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        entry = {"id": package_id, "path_excludes": []}
+        configs.append(entry)
+    excludes: list[dict] = entry.setdefault("path_excludes", [])
+    if not any(e.get("pattern") == exclude["pattern"] for e in excludes):
+        excludes.append(exclude)
+    return entry
+
+
+def _delete_path_exclude(
+    configs: list[dict], package_id: str, pattern: str
+) -> dict | None:
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        return None
+    entry["path_excludes"] = [
+        e for e in entry.get("path_excludes") or [] if e.get("pattern") != pattern
+    ]
+    return entry
+
+
 @app.put("/path-excludes", response_model=PackagePathExcludes)
 def add_path_exclude(req: AddPathExcludeRequest):
     configs = _read_pkg_configs()
-    entry = next((c for c in configs if c.get("id") == req.package_id), None)
-    if entry is None:
-        entry = {"id": req.package_id, "path_excludes": []}
-        configs.append(entry)
-    excludes: list[dict] = entry.setdefault("path_excludes", [])
-    if not any(e.get("pattern") == req.pattern for e in excludes):
-        excludes.append(
-            {"pattern": req.pattern, "reason": req.reason, "comment": req.comment}
-        )
+    exclude = {"pattern": req.pattern, "reason": req.reason, "comment": req.comment}
+    entry = _upsert_path_exclude(configs, req.package_id, exclude)
+    for sibling_id in _pkg_siblings.get(req.package_id, []):
+        _upsert_path_exclude(configs, sibling_id, exclude.copy())
     _write_pkg_configs(configs)
     return PackagePathExcludes(
         package_id=req.package_id,
-        path_excludes=[PathExclude(**e) for e in excludes],
+        path_excludes=[PathExclude(**e) for e in entry["path_excludes"]],
     )
 
 
 @app.delete("/path-excludes", response_model=PackagePathExcludes)
 def remove_path_exclude(package_id: str, pattern: str):
     configs = _read_pkg_configs()
-    entry = next((c for c in configs if c.get("id") == package_id), None)
+    entry = _delete_path_exclude(configs, package_id, pattern)
     if entry is None:
         return PackagePathExcludes(package_id=package_id, path_excludes=[])
-    entry["path_excludes"] = [
-        e for e in entry.get("path_excludes") or [] if e.get("pattern") != pattern
-    ]
+    for sibling_id in _pkg_siblings.get(package_id, []):
+        _delete_path_exclude(configs, sibling_id, pattern)
     _write_pkg_configs(configs)
     return PackagePathExcludes(
         package_id=package_id,
@@ -727,25 +744,57 @@ def get_finding_curations(package_id: str):
     )
 
 
-@app.put("/finding-curations", response_model=PackageFindingCurations)
-def set_finding_curation(req: SetFindingCurationRequest):
-    configs = _read_pkg_configs()
-    entry = next((c for c in configs if c.get("id") == req.package_id), None)
+def _upsert_finding_curation(
+    configs: list[dict], package_id: str, finding: dict
+) -> dict:
+    entry = next((c for c in configs if c.get("id") == package_id), None)
     if entry is None:
-        entry = {"id": req.package_id}
+        entry = {"id": package_id}
         configs.append(entry)
     curations: list[dict] = entry.setdefault("license_finding_curations", [])
     existing = next(
         (
             c
             for c in curations
-            if c.get("path") == req.path
-            and str(c.get("start_lines", "")) == req.start_lines
-            and c.get("detected_license") == req.detected_license
+            if c.get("path") == finding["path"]
+            and str(c.get("start_lines", "")) == finding["start_lines"]
+            and c.get("detected_license") == finding["detected_license"]
         ),
         None,
     )
-    new_entry = {
+    if existing is not None:
+        existing.update(finding)
+    else:
+        curations.append(finding)
+    return entry
+
+
+def _delete_finding_curation(
+    configs: list[dict],
+    package_id: str,
+    path: str,
+    start_lines: str,
+    detected_license: str,
+) -> dict | None:
+    entry = next((c for c in configs if c.get("id") == package_id), None)
+    if entry is None:
+        return None
+    entry["license_finding_curations"] = [
+        c
+        for c in entry.get("license_finding_curations") or []
+        if not (
+            c.get("path") == path
+            and str(c.get("start_lines", "")) == start_lines
+            and c.get("detected_license") == detected_license
+        )
+    ]
+    return entry
+
+
+@app.put("/finding-curations", response_model=PackageFindingCurations)
+def set_finding_curation(req: SetFindingCurationRequest):
+    configs = _read_pkg_configs()
+    finding = {
         "path": req.path,
         "start_lines": req.start_lines,
         "line_count": req.line_count,
@@ -754,10 +803,9 @@ def set_finding_curation(req: SetFindingCurationRequest):
         "comment": req.comment,
         "concluded_license": req.concluded_license,
     }
-    if existing is not None:
-        existing.update(new_entry)
-    else:
-        curations.append(new_entry)
+    entry = _upsert_finding_curation(configs, req.package_id, finding)
+    for sibling_id in _pkg_siblings.get(req.package_id, []):
+        _upsert_finding_curation(configs, sibling_id, finding.copy())
     _write_pkg_configs(configs)
     return PackageFindingCurations(
         package_id=req.package_id,
@@ -770,20 +818,17 @@ def remove_finding_curation(
     package_id: str, path: str, start_lines: str, detected_license: str
 ):
     configs = _read_pkg_configs()
-    entry = next((c for c in configs if c.get("id") == package_id), None)
+    entry = _delete_finding_curation(
+        configs, package_id, path, start_lines, detected_license
+    )
     if entry is None:
         return PackageFindingCurations(
             package_id=package_id, license_finding_curations=[]
         )
-    entry["license_finding_curations"] = [
-        c
-        for c in entry.get("license_finding_curations") or []
-        if not (
-            c.get("path") == path
-            and str(c.get("start_lines", "")) == start_lines
-            and c.get("detected_license") == detected_license
+    for sibling_id in _pkg_siblings.get(package_id, []):
+        _delete_finding_curation(
+            configs, sibling_id, path, start_lines, detected_license
         )
-    ]
     _write_pkg_configs(configs)
     return PackageFindingCurations(
         package_id=package_id,
