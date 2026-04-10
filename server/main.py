@@ -162,7 +162,8 @@ def pkg_id_to_dir(pkg_id: str) -> Path | None:
     type_, namespace, name, version = parts[0], parts[1], parts[2], parts[3]
     if not namespace:
         namespace = "unknown"
-    return ORT_OUT_PATH / type_ / namespace / name / version
+    encoded_namespace = urllib.parse.quote(namespace, safe="")
+    return ORT_OUT_PATH / type_ / encoded_namespace / name / version
 
 
 class PathExclude(BaseModel):

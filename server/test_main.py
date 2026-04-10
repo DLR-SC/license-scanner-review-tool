@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import urllib.parse
+
 import pytest
 import yaml
 from fastapi.testclient import TestClient
@@ -513,7 +515,9 @@ def file_content_dir(tmp_path):
             parts[2],
             parts[3],
         )
-        pkg_dir = tmp_path / type_ / namespace / name / version
+        pkg_dir = (
+            tmp_path / type_ / urllib.parse.quote(namespace, safe="") / name / version
+        )
         pkg_dir.mkdir(parents=True, exist_ok=True)
         f = pkg_dir / rel_path
         f.write_text(content)
@@ -616,6 +620,17 @@ def test_file_content_empty_namespace(file_content_dir):
     file_content_dir("PyPI::requests:2.0", "LICENSE", "MIT License")
     response = client.get(
         "/file-content?package_id=PyPI::requests:2.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert len(lines) == 1
+    assert lines[0] == {"number": 1, "content": "MIT License", "highlighted": True}
+
+
+def test_file_content_scoped_npm_package(file_content_dir):
+    file_content_dir("NPM:@babel:helper-string-parser:7.27.1", "LICENSE", "MIT License")
+    response = client.get(
+        "/file-content?package_id=NPM:%40babel:helper-string-parser:7.27.1&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
