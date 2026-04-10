@@ -204,26 +204,34 @@ BASE = {
 
 @pytest.fixture
 def scan_result_file(tmp_path):
-    original = main_module.SCAN_RESULT_PATH
+    original_path = main_module.SCAN_RESULT_PATH
+    original_data = main_module._scan_data
 
     def write(data: dict):
         path = tmp_path / "scan-result.yml"
         path.write_text(yaml.dump(data))
         main_module.SCAN_RESULT_PATH = path
+        main_module._scan_data = data
+        main_module._load_vcs_sibling_data()
         return path
 
     yield write
-    main_module.SCAN_RESULT_PATH = original
+    main_module.SCAN_RESULT_PATH = original_path
+    main_module._scan_data = original_data
+    main_module._load_vcs_sibling_data()
 
 
 def test_scan_result_missing_file(tmp_path):
-    original = main_module.SCAN_RESULT_PATH
+    original_path = main_module.SCAN_RESULT_PATH
+    original_data = main_module._scan_data
     main_module.SCAN_RESULT_PATH = tmp_path / "nonexistent.yml"
+    main_module._scan_data = None
     try:
         response = client.get("/scan-result")
         assert response.status_code == 404
     finally:
-        main_module.SCAN_RESULT_PATH = original
+        main_module.SCAN_RESULT_PATH = original_path
+        main_module._scan_data = original_data
 
 
 def test_scan_result_empty(scan_result_file):
@@ -645,6 +653,82 @@ def test_file_content_empty_file(file_content_dir):
     )
     assert response.status_code == 200
     assert response.json() == {"lines": [], "total_lines": 0}
+
+
+def test_file_content_vcs_sibling_fallback(file_content_dir, scan_result_file):
+    # Package A has vcs.path "packages/core"; sibling B has vcs.path "packages/utils".
+    # A file at "packages/utils/LICENSE" is stored under B's ORT dir, not A's.
+    # Requesting the file for package A should fall back to the sibling B's directory.
+    nested = file_content_dir("NPM::pkg-b:1.0.0", "LICENSE", "placeholder")
+    pkg_b_dir = nested.parent
+    (pkg_b_dir / "packages" / "utils").mkdir(parents=True, exist_ok=True)
+    (pkg_b_dir / "packages" / "utils" / "LICENSE").write_text("MIT License")
+
+    scan_result_file(
+        {
+            **BASE,
+            "analyzer": {
+                "result": {
+                    "projects": [],
+                    "packages": [
+                        {
+                            "id": "NPM::pkg-a:1.0.0",
+                            "vcs_processed": {
+                                "path": "packages/core",
+                                "url": "",
+                                "type": "",
+                                "revision": "",
+                            },
+                        },
+                        {
+                            "id": "NPM::pkg-b:1.0.0",
+                            "vcs_processed": {
+                                "path": "packages/utils",
+                                "url": "",
+                                "type": "",
+                                "revision": "",
+                            },
+                        },
+                    ],
+                    "dependency_graphs": {},
+                }
+            },
+            "scanner": {
+                "provenances": [
+                    {
+                        "id": "NPM::pkg-a:1.0.0",
+                        "package_provenance": {
+                            "vcs_info": {
+                                "url": "https://github.com/example/monorepo",
+                                "revision": "abc123",
+                            },
+                            "resolved_revision": "abc123",
+                        },
+                    },
+                    {
+                        "id": "NPM::pkg-b:1.0.0",
+                        "package_provenance": {
+                            "vcs_info": {
+                                "url": "https://github.com/example/monorepo",
+                                "revision": "abc123",
+                            },
+                            "resolved_revision": "abc123",
+                        },
+                    },
+                ],
+                "scan_results": [],
+            },
+        }
+    )
+
+    response = client.get(
+        "/file-content?package_id=NPM::pkg-a:1.0.0&path=packages/utils/LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
+    )
+    assert response.status_code == 200
+    lines = response.json()["lines"]
+    assert lines is not None
+    assert len(lines) == 1
+    assert lines[0]["content"] == "MIT License"
 
 
 # /license-text

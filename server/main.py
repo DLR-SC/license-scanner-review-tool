@@ -30,6 +30,50 @@ ORT_OUT_PATH = Path(__file__).parent / "ort-out"
 PKG_CONFIG_PATH = Path(__file__).parent / "ort-out" / "package-configurations.yml"
 CURATIONS_PATH = Path(__file__).parent / "ort-out" / "curations.yml"
 
+_scan_data: dict | None = None
+
+_pkg_vcs_path: dict[str, str] = {}
+_pkg_siblings: dict[str, list[str]] = {}
+
+
+def _load_vcs_sibling_data() -> None:
+    global _pkg_vcs_path, _pkg_siblings
+    _pkg_vcs_path = {}
+    _pkg_siblings = {}
+    if _scan_data is None:
+        return
+    for pkg in _scan_data.get("analyzer", {}).get("result", {}).get("packages", []):
+        pid = pkg.get("id", "")
+        vp = pkg.get("vcs_processed", {}).get("path", "") or pkg.get("vcs", {}).get(
+            "path", ""
+        )
+        _pkg_vcs_path[pid] = vp
+    provenance_map: dict[tuple[str, str], list[str]] = {}
+    for prov in _scan_data.get("scanner", {}).get("provenances", []):
+        pid = prov.get("id", "")
+        pkg_prov = prov.get("package_provenance", {})
+        vcs = pkg_prov.get("vcs_info", {})
+        url = vcs.get("url", "")
+        revision = pkg_prov.get("resolved_revision", "") or vcs.get("revision", "")
+        if url and revision:
+            provenance_map.setdefault((url, revision), []).append(pid)
+    for pkg_ids in provenance_map.values():
+        if len(pkg_ids) > 1:
+            for pid in pkg_ids:
+                _pkg_siblings[pid] = [i for i in pkg_ids if i != pid]
+
+
+def _load_scan_data() -> None:
+    global _scan_data
+    _scan_data = None
+    if SCAN_RESULT_PATH.exists():
+        with SCAN_RESULT_PATH.open() as f:
+            _scan_data = yaml.safe_load(f)
+    _load_vcs_sibling_data()
+
+
+_load_scan_data()
+
 CACHE_TTL: dict[str, float] = {
     "github_stars": 3600,  # 1 hour
     "npm_downloads": 86400,  # 24 hours
@@ -261,6 +305,33 @@ class FileContent(BaseModel):
     total_lines: int = 0
 
 
+def _resolve_file_via_vcs_sibling(package_id: str, path: str) -> Path | None:
+    # For packages with VCS siblings (monorepos), a file referenced in a license
+    # finding may be stored under a sibling package's ORT output directory rather than the
+    # current package's directory.
+    # This happens because the ORT download command accounts for the VCS path of the package,
+    # while the scanner scans the complete repository.
+    # We assume that the files are downloaded via ORT's download command
+    # because it is more reliable than extracting the files from the scanner step.
+    current_vcs_path = _pkg_vcs_path.get(package_id, "")
+    if not current_vcs_path or path.startswith(current_vcs_path):
+        return None
+    best_sibling: str | None = None
+    best_len = -1
+    for sibling_id in _pkg_siblings.get(package_id, []):
+        sibling_vcs_path = _pkg_vcs_path.get(sibling_id, "")
+        if path.startswith(sibling_vcs_path) and len(sibling_vcs_path) > best_len:
+            best_sibling = sibling_id
+            best_len = len(sibling_vcs_path)
+    if best_sibling is None:
+        return None
+    sibling_dir = pkg_id_to_dir(best_sibling)
+    if sibling_dir is None:
+        return None
+    candidate = sibling_dir / path
+    return candidate if candidate.is_file() else None
+
+
 @app.get("/file-content", response_model=FileContent)
 def get_file_content(
     package_id: str,
@@ -274,6 +345,8 @@ def get_file_content(
     if pkg_dir is None:
         return FileContent(lines=None)
     file_path = pkg_dir / path
+    if not file_path.is_file():
+        file_path = _resolve_file_via_vcs_sibling(package_id, path) or file_path
     if not file_path.is_file():
         return FileContent(lines=None)
     all_lines = file_path.read_text(errors="replace").splitlines()
@@ -407,25 +480,21 @@ async def get_license_text(license: str):
 
 @app.get("/dependency-graph")
 def get_dependency_graph() -> dict:
-    if not SCAN_RESULT_PATH.exists():
+    if _scan_data is None:
         raise HTTPException(
             status_code=404, detail=f"scan-result.yml not found at {SCAN_RESULT_PATH}"
         )
-    with SCAN_RESULT_PATH.open() as f:
-        data = yaml.safe_load(f)
-    return data["analyzer"]["result"].get("dependency_graphs", {})
+    return _scan_data["analyzer"]["result"].get("dependency_graphs", {})
 
 
 @app.get("/scan-result", response_model=OrtResult)
 def get_scan_result():
-    if not SCAN_RESULT_PATH.exists():
+    if _scan_data is None:
         raise HTTPException(
             status_code=404, detail=f"scan-result.yml not found at {SCAN_RESULT_PATH}"
         )
 
-    with SCAN_RESULT_PATH.open() as f:
-        data = yaml.safe_load(f)
-
+    data = _scan_data
     repo_raw = data["repository"]
     repository = Repository(
         vcs=parse_vcs(repo_raw.get("vcs", {})),
