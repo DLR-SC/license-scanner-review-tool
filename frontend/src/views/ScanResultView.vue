@@ -594,9 +594,16 @@ watch(
         <ul class="flex flex-col gap-1">
           <li v-for="rootId in store.rootPackageIds" :key="rootId">
             <button
-              class="text-left px-3 py-2 border rounded w-full hover:bg-gray-50 font-mono text-sm"
+              class="text-left px-3 py-2 border rounded w-full hover:bg-gray-50 font-mono text-sm flex items-center gap-2"
               @click="navigateToRoot(store.packages.find((p) => p.id === rootId)?.purl ?? '')"
             >
+              <span
+                :class="
+                  store.curations[rootId]?.concluded_license ? 'text-green-500' : 'text-gray-300'
+                "
+                aria-hidden="true"
+                >●</span
+              >
               {{ rootId }}
             </button>
           </li>
@@ -761,9 +768,18 @@ watch(
                 <ul class="flex flex-col gap-0.5">
                   <li v-for="dep in currentDeps" :key="dep.id">
                     <button
-                      class="font-mono text-xs hover:underline text-left"
+                      class="font-mono text-xs hover:underline text-left flex items-center gap-1.5"
                       @click="navigateToDep(dep.id)"
                     >
+                      <span
+                        :class="
+                          store.curations[dep.id]?.concluded_license
+                            ? 'text-green-500'
+                            : 'text-gray-300'
+                        "
+                        aria-hidden="true"
+                        >●</span
+                      >
                       {{ dep.id }}
                     </button>
                   </li>

@@ -150,6 +150,7 @@ export async function mockAll(
     pathExcludes?: object[]
     onPathExcludesMutation?: (body: object) => object
     licenseCuration?: object
+    allLicenseCurations?: object[]
     onLicenseCurationsMutation?: (body: object) => object
     findingCurations?: object[]
     onFindingCurationsMutation?: (body: object) => object
@@ -189,6 +190,9 @@ export async function mockAll(
     const method = route.request().method()
     const url = new URL(route.request().url())
     const pkgId = url.searchParams.get('package_id') ?? ''
+    if (method === 'GET' && url.pathname.endsWith('/all')) {
+      return route.fulfill({ json: opts.allLicenseCurations ?? [] })
+    }
     if (method === 'GET') {
       return route.fulfill({
         json: opts.licenseCuration ?? { package_id: pkgId, comment: '', concluded_license: null },

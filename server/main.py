@@ -715,6 +715,19 @@ def remove_license_curation(package_id: str):
     return PackageCuration(package_id=package_id)
 
 
+@app.get("/license-curations/all", response_model=list[PackageCuration])
+def get_all_license_curations():
+    curations = _read_curations()
+    return [
+        PackageCuration(
+            package_id=c["id"],
+            comment=c.get("curations", {}).get("comment", ""),
+            concluded_license=c.get("curations", {}).get("concluded_license"),
+        )
+        for c in curations
+    ]
+
+
 def _parse_finding_curations(entry: dict) -> list[LicenseFindingCuration]:
     return [
         LicenseFindingCuration(

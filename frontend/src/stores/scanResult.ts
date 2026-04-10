@@ -207,6 +207,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
       packages.value = data.packages
       scanResults.value = data.scan_results
       await fetchDependencyGraph()
+      await fetchAllCurations()
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
     } finally {
@@ -250,6 +251,19 @@ export const useScanResultStore = defineStore('scanResult', () => {
     if (res.ok) {
       const data: PackagePathExcludes = await res.json()
       pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
+    }
+  }
+
+  async function fetchAllCurations() {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(new URL('/license-curations/all', base).toString())
+    if (res.ok) {
+      const data: PackageCuration[] = await res.json()
+      const map: Record<string, PackageCuration> = {}
+      for (const c of data) {
+        map[c.package_id] = c
+      }
+      curations.value = { ...curations.value, ...map }
     }
   }
 

@@ -1126,6 +1126,48 @@ def test_license_curations_delete_nonexistent_returns_null(curations_file):
     }
 
 
+def test_license_curations_all_empty_file_returns_empty_list(curations_file):
+    response = client.get("/license-curations/all")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_license_curations_all_returns_all_entries(curations_file):
+    curations_file(
+        [
+            {
+                "id": "NPM::lodash:4.0.0",
+                "curations": {
+                    "comment": "Upstream declares MIT",
+                    "concluded_license": "MIT",
+                },
+            },
+            {
+                "id": "NPM::express:4.18.0",
+                "curations": {
+                    "comment": "",
+                    "concluded_license": "MIT",
+                },
+            },
+        ]
+    )
+    response = client.get("/license-curations/all")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    by_id = {e["package_id"]: e for e in data}
+    assert by_id["NPM::lodash:4.0.0"] == {
+        "package_id": "NPM::lodash:4.0.0",
+        "comment": "Upstream declares MIT",
+        "concluded_license": "MIT",
+    }
+    assert by_id["NPM::express:4.18.0"] == {
+        "package_id": "NPM::express:4.18.0",
+        "comment": "",
+        "concluded_license": "MIT",
+    }
+
+
 def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
     httpx_mock.add_response(
         url="https://scancode-licensedb.aboutcode.org/index.json",
