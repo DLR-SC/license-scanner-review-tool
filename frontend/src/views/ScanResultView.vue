@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import DescribedSelect from '@/components/DescribedSelect.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
@@ -16,6 +17,7 @@ import {
   type LicenseFindingCuration,
   type Package,
 } from '@/stores/scanResult'
+import type { Option } from '@/components/DescribedSelect.vue'
 
 const store = useScanResultStore()
 const route = useRoute()
@@ -35,6 +37,91 @@ const MANIFEST_FILES = new Set([
   'go.sum',
 ])
 const LICENSE_FILE_RE = /^(license|copying|notice|readme)/i
+
+/**
+ * https://github.com/oss-review-toolkit/ort/blob/82.0.0/model/src/main/kotlin/config/PathExcludeReason.kt
+ */
+const PATH_EXCLUDE_REASONS: Option[] = [
+  {
+    label: 'BUILD_TOOL_OF',
+    description:
+      'The path only contains tools used for building source code which are not included in distributed build artifacts.',
+  },
+  {
+    label: 'DATA_FILE_OF',
+    description:
+      'The path only contains data files such as fonts or images which are not included in distributed build artifacts.',
+  },
+  {
+    label: 'DOCUMENTATION_OF',
+    description:
+      'The path only contains documentation which is not included in distributed build artifacts.',
+  },
+  {
+    label: 'EXAMPLE_OF',
+    description:
+      'The path only contains source code examples which are not included in distributed build artifacts.',
+  },
+  {
+    label: 'OPTIONAL_COMPONENT_OF',
+    description:
+      'The path only contains optional components for the code that is built which are not included in distributed build artifacts.',
+  },
+  {
+    label: 'OTHER',
+    description:
+      'A fallback reason for the PathExcludeReason when none of the other reasons apply.',
+  },
+  {
+    label: 'PROVIDED_BY',
+    description:
+      'The path only contains packages or sources for packages that have to be provided by the user of distributed build artifacts.',
+  },
+  {
+    label: 'TEST_OF',
+    description:
+      'The path only contains files used for testing source code which are not included in distributed build artifacts.',
+  },
+  {
+    label: 'TEST_TOOL_OF',
+    description:
+      'The path only contains tools used for testing source code which are not included in distributed build artifacts.',
+  },
+]
+
+/**
+ * https://github.com/oss-review-toolkit/ort/blob/82.0.0/model/src/main/kotlin/config/LicenseFindingCurationReason.kt
+ */
+const LICENSE_FINDING_CURATIONS_REASONS: Option[] = [
+  {
+    label: 'CODE',
+    description: 'The findings occur in source code, for example the name of a variable.',
+  },
+  {
+    label: 'DATA_OF',
+    description:
+      'The findings occur in data, for example a JSON object defining all SPDX licenses.',
+  },
+  {
+    label: 'DOCUMENTATION_OF',
+    description:
+      'The findings occur in documentation, for example in code comments or in the README.md.',
+  },
+  {
+    label: 'INCORRECT',
+    description:
+      'The detected licenses are not correct. Use only if none of the other reasons apply.',
+  },
+  {
+    label: 'NOT_DETECTED',
+    description: 'Add applicable license as the scanner did not detect it.',
+  },
+  {
+    label: 'REFERENCE',
+    description:
+      'The findings reference a file or URL, e.g. SEE LICENSE IN LICENSE or https://jquery.org/license/.',
+  },
+]
 
 /**
  * Returns a sort priority tier for a license finding (lower = shown first).
@@ -199,7 +286,7 @@ const showHidden = ref(false)
 
 const showExcludeForm = ref(false)
 const excludeFormPattern = ref('')
-const excludeFormReason = ref('TEST_TOOL_OF')
+const excludeFormReason = ref<Option['label']>('BUILD_TOOL_OF')
 const excludeFormComment = ref('')
 
 const showCurationForm = ref(false)
@@ -227,7 +314,7 @@ const currentFindingCurationsMap = computed(() => {
 const showDecisionForm = ref(false)
 const decisionLicense = ref('')
 const decisionComment = ref('')
-const decisionReason = ref('CODE')
+const decisionReason = ref<Option['label']>('CODE')
 
 const showReviewed = ref(false)
 
@@ -252,7 +339,7 @@ async function confirmCuration() {
 function openExcludeForm() {
   const path = currentFinding.value?.location.path ?? ''
   excludeFormPattern.value = pathExcludeOptions(path)[0] ?? path
-  excludeFormReason.value = 'TEST_TOOL_OF'
+  excludeFormReason.value = 'BUILD_TOOL_OF'
   excludeFormComment.value = ''
   showExcludeForm.value = true
 }
@@ -821,12 +908,10 @@ watch(
                   placeholder="SPDX expression or NONE"
                   class="border rounded px-2 py-1 text-xs font-mono flex-1 min-w-0"
                 />
-                <select v-model="decisionReason" class="border rounded px-2 py-1 text-xs">
-                  <option>CODE</option>
-                  <option>DOCUMENTATION</option>
-                  <option>DATA_OF</option>
-                  <option>OTHER</option>
-                </select>
+                <DescribedSelect
+                  v-model="decisionReason"
+                  :options="LICENSE_FINDING_CURATIONS_REASONS"
+                />
                 <input
                   v-model="decisionComment"
                   placeholder="Comment (optional)"
@@ -858,13 +943,7 @@ watch(
                     {{ opt }}
                   </option>
                 </select>
-                <select v-model="excludeFormReason" class="border rounded px-2 py-1 text-xs">
-                  <option>TEST_TOOL_OF</option>
-                  <option>DOCUMENTATION_OF</option>
-                  <option>BUILD_TOOL_OF</option>
-                  <option>DEV_TOOL_OF</option>
-                  <option>OTHER</option>
-                </select>
+                <DescribedSelect v-model="excludeFormReason" :options="PATH_EXCLUDE_REASONS" />
                 <input
                   v-model="excludeFormComment"
                   placeholder="Comment (optional)"
