@@ -809,11 +809,7 @@ watch(
             <span class="text-gray-500 font-medium"
               >Path excludes active for this package ({{ currentExcludes.length }}):</span
             >
-            <div
-              v-for="exc in currentExcludes"
-              :key="exc.pattern"
-              class="flex items-center gap-2"
-            >
+            <div v-for="exc in currentExcludes" :key="exc.pattern" class="flex items-center gap-2">
               <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
               <span class="text-gray-500">{{ exc.reason }}</span>
               <button
