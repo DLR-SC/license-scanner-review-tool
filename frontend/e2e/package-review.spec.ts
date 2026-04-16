@@ -12,6 +12,8 @@ import {
   PKG1_ID,
   PKG2_ID,
   FINDING_TESTS_UNIT,
+  FINDING_TESTS_INTEGRATION,
+  FINDING_SOURCE,
 } from './helpers.js'
 
 test('initial load: root package list is shown', async ({ page }) => {
@@ -122,7 +124,20 @@ test('scoped npm dependency: clicking and direct URL navigation work correctly',
   const scanResult = {
     repository: { type: 'Git', url: '', revision: '', path: '' },
     projects: [],
-    packages: [{ ...scopedPackage }, { id: PKG1_ID, purl: PACKAGE_1.purl, authors: [], declared_licenses: [], declared_licenses_processed: { spdx_expression: '' }, description: '', homepage_url: '', vcs_url: '', vcs_siblings: [] }],
+    packages: [
+      { ...scopedPackage },
+      {
+        id: PKG1_ID,
+        purl: PACKAGE_1.purl,
+        authors: [],
+        declared_licenses: [],
+        declared_licenses_processed: { spdx_expression: '' },
+        description: '',
+        homepage_url: '',
+        vcs_url: '',
+        vcs_siblings: [],
+      },
+    ],
     scan_results: [],
   }
   const dependencyGraph = {
@@ -145,6 +160,18 @@ test('scoped npm dependency: clicking and direct URL navigation work correctly',
   await page.getByRole('button', { name: SCOPED_ID }).click()
   await expect(page.getByRole('cell', { name: SCOPED_ID })).toBeVisible()
   expect(page.url()).toContain(PACKAGE_1.purl + ';' + SCOPED_PURL)
+})
+
+test('detected licenses shown in metadata table, deduplicated', async ({ page }) => {
+  // FINDING_TESTS_UNIT and FINDING_TESTS_INTEGRATION are both MIT → deduplicated to one entry
+  // FINDING_SOURCE is Apache-2.0 → appears separately
+  await mockAll(page, {
+    scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_SOURCE, FINDING_TESTS_INTEGRATION]),
+  })
+  await navigateToPackage(page, PACKAGE_1.purl)
+  await expect(page.getByRole('row', { name: /Detected licenses/ })).toContainText(
+    'Apache-2.0, MIT',
+  )
 })
 
 test('path excludes fetched when navigating to a package', async ({ page }) => {

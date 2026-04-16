@@ -216,6 +216,11 @@ const currentScanResult = computed(
   () => store.scanResults.find((sr) => sr.package_id === currentPackage.value?.id) ?? null,
 )
 
+const detectedLicenses = computed(() => {
+  const licenses = currentScanResult.value?.licenses ?? []
+  return [...new Set(licenses.map((f) => f.license))].sort().join(', ')
+})
+
 const findingIndex = ref(0)
 
 const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
@@ -696,6 +701,10 @@ watch(
                   currentPackage.declared_licenses.join(', ')
                 }}
               </td>
+            </tr>
+            <tr>
+              <th class="border px-3 py-1.5 text-left">Detected licenses</th>
+              <td class="border px-3 py-1.5">{{ detectedLicenses }}</td>
             </tr>
             <tr>
               <th class="border px-3 py-1.5 text-left">Concluded license</th>
