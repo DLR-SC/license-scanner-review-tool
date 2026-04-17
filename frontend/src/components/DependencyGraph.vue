@@ -1,0 +1,226 @@
+<!--
+SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<script setup lang="ts">
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import cytoscape from 'cytoscape'
+import dagre from 'cytoscape-dagre'
+import { useScanResultStore } from '@/stores/scanResult'
+
+cytoscape.use(dagre)
+
+interface Props {
+  currentPackageId: string | null
+}
+
+const props = defineProps<Props>()
+
+const store = useScanResultStore()
+const container = ref<HTMLDivElement | null>(null)
+let cy: cytoscape.Core | null = null
+
+const tooltip = ref<{ visible: boolean; text: string; x: number; y: number }>({
+  visible: false,
+  text: '',
+  x: 0,
+  y: 0,
+})
+
+function shortLabel(id: string): string {
+  const parts = id.split(':')
+  return parts.length >= 3 ? parts.slice(-3).join(':') : id
+}
+
+const styleSheet: cytoscape.StylesheetStyle[] = [
+  {
+    selector: 'node',
+    style: {
+      label: '',
+      shape: 'ellipse',
+      width: 32,
+      height: 32,
+      'background-color': '#9ca3af',
+      'border-width': 0,
+    },
+  },
+  {
+    selector: 'node.concluded',
+    style: {
+      'background-color': '#22c55e',
+    },
+  },
+  {
+    selector: 'node.current',
+    style: {
+      'background-color': '#1d4ed8',
+      width: 40,
+      height: 40,
+    },
+  },
+  {
+    selector: 'node.project',
+    style: {
+      'background-color': '#1e293b',
+      width: 40,
+      height: 40,
+    },
+  },
+  {
+    selector: 'edge',
+    style: {
+      width: 2,
+      'line-color': '#9ca3af',
+      'target-arrow-shape': 'triangle',
+      'target-arrow-color': '#9ca3af',
+      'curve-style': 'bezier',
+      'arrow-scale': 1.2,
+    },
+  },
+]
+
+function buildElements(): cytoscape.ElementDefinition[] {
+  const packageIds = new Set(store.packages.map((pkg) => pkg.id))
+
+  const packageNodes: cytoscape.ElementDefinition[] = store.packages.map((pkg) => ({
+    data: { id: pkg.id, label: shortLabel(pkg.id) },
+  }))
+
+  // Project nodes and their edges to root packages derived from scopes
+  const projectNodes: cytoscape.ElementDefinition[] = []
+  const projectEdges: cytoscape.ElementDefinition[] = []
+  for (const [projectId, graph] of Object.entries(store.dependencyGraph ?? {})) {
+    projectNodes.push({
+      data: { id: projectId, label: shortLabel(projectId) },
+      classes: 'project',
+    })
+    const rootPkgIds = new Set<string>()
+    for (const scopeEntries of Object.values(graph.scopes)) {
+      for (const entry of scopeEntries) {
+        const pkgId = graph.packages[entry.root]
+        if (pkgId && packageIds.has(pkgId)) rootPkgIds.add(pkgId)
+      }
+    }
+    for (const pkgId of rootPkgIds) {
+      projectEdges.push({
+        data: { id: `${projectId}-->${pkgId}`, source: projectId, target: pkgId },
+      })
+    }
+  }
+
+  const packageEdges: cytoscape.ElementDefinition[] = Object.entries(store.dependencyMap).flatMap(
+    ([from, children]) => {
+      if (!packageIds.has(from)) return []
+      return children
+        .filter((to) => packageIds.has(to))
+        .map((to) => ({
+          data: { id: `${from}-->${to}`, source: from, target: to },
+        }))
+    },
+  )
+
+  return [...projectNodes, ...packageNodes, ...packageEdges, ...projectEdges]
+}
+
+function applyClasses() {
+  if (!cy) return
+  cy.nodes().forEach((node) => {
+    const id = node.data('id') as string
+    node.removeClass('current concluded')
+    if (id === props.currentPackageId) node.addClass('current')
+    if (store.curations[id]?.concluded_license) node.addClass('concluded')
+  })
+}
+
+function rebuildGraph() {
+  if (!cy || store.packages.length === 0) return
+  cy.resize()
+  cy.elements().remove()
+  cy.add(buildElements())
+  const layout = cy.layout({
+    name: 'dagre',
+    rankDir: 'TB',
+    nodeSep: 15,
+    rankSep: 40,
+  } as cytoscape.LayoutOptions)
+  layout.one('layoutstop', () => {
+    cy?.fit(cy.elements(), 16)
+  })
+  layout.run()
+  applyClasses()
+}
+
+onMounted(async () => {
+  await nextTick()
+  if (!container.value) return
+  cy = cytoscape({
+    container: container.value,
+    elements: [],
+    style: styleSheet,
+    userZoomingEnabled: false,
+    userPanningEnabled: false,
+    autoungrabify: true,
+  })
+  cy.on('mouseover', 'node', (e) => {
+    const pos = e.target.renderedPosition() as { x: number; y: number }
+    tooltip.value = {
+      visible: true,
+      text: e.target.data('label') as string,
+      x: pos.x + 10,
+      y: pos.y - 14,
+    }
+  })
+  cy.on('mouseout', 'node', () => {
+    tooltip.value = { ...tooltip.value, visible: false }
+  })
+  // Wait for the browser to finish laying out the container before
+  // computing the dagre layout so cy.resize() reads real dimensions.
+  requestAnimationFrame(() => {
+    if (store.packages.length > 0) {
+      rebuildGraph()
+    }
+  })
+})
+
+onUnmounted(() => {
+  cy?.destroy()
+  cy = null
+})
+
+watch(
+  () => store.dependencyMap,
+  () => {
+    if (cy && store.packages.length > 0) rebuildGraph()
+  },
+)
+
+watch(
+  () => props.currentPackageId,
+  () => {
+    applyClasses()
+  },
+)
+
+watch(
+  () => store.curations,
+  () => {
+    applyClasses()
+  },
+  { deep: true },
+)
+</script>
+
+<template>
+  <div class="flex flex-col border-l bg-white shrink-0 relative" style="width: 300px">
+    <div ref="container" class="w-full h-full" />
+    <div
+      v-if="tooltip.visible"
+      class="absolute pointer-events-none z-10 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-900 shadow-sm whitespace-nowrap"
+      :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
+    >
+      {{ tooltip.text }}
+    </div>
+  </div>
+</template>
