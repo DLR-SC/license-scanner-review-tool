@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 import os
 import re
 import time
 import urllib.parse
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +18,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-app = FastAPI()
+logger = logging.getLogger("uvicorn")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _load_scan_data()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,12 +78,14 @@ def _load_scan_data() -> None:
     global _scan_data
     _scan_data = None
     if SCAN_RESULT_PATH.exists():
+        logger.info("Loading scan data from %s", SCAN_RESULT_PATH)
         with SCAN_RESULT_PATH.open() as f:
             _scan_data = yaml.safe_load(f)
+        logger.info("Scan data loaded")
+    else:
+        logger.warning("Scan result file not found: %s", SCAN_RESULT_PATH)
     _load_vcs_sibling_data()
 
-
-_load_scan_data()
 
 CACHE_TTL: dict[str, float] = {
     "github_stars": 3600,  # 1 hour
