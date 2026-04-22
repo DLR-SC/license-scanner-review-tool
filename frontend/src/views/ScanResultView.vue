@@ -19,6 +19,8 @@ import {
   type Package,
 } from '@/stores/scanResult'
 import type { Option } from '@/components/DescribedSelect.vue'
+import { extractLicenseIds, licenseInExpression, buildAndExpression } from '@/utils/spdx'
+import { analyzeCompatibility, type CompatibilityCase } from '@/utils/licenseCompatibility'
 
 const store = useScanResultStore()
 const route = useRoute()
@@ -136,7 +138,7 @@ function findingTier(f: LicenseFinding, spdx: string): number {
   const base = f.location.path.split('/').at(-1)?.toLowerCase() ?? ''
   if (base.endsWith('.gemspec') || MANIFEST_FILES.has(base)) return 0
   if (LICENSE_FILE_RE.test(base)) return 1
-  if (!spdx.includes(f.license)) return 2
+  if (!licenseInExpression(f.license, spdx)) return 2
   return 3
 }
 
@@ -235,7 +237,7 @@ const reviewFindings = computed(() => {
   return allFindings.value
     .filter(
       (f) =>
-        (f.score < 100 || !spdx.includes(f.license)) &&
+        (f.score < 100 || !licenseInExpression(f.license, spdx)) &&
         !excludePatterns.some((p) => minimatch(f.location.path, p)) &&
         !curationsMap.has(findingCurationKey(f)),
     )
@@ -258,8 +260,10 @@ const hiddenFindings = computed(() =>
   allFindings.value.filter(
     (f) =>
       f.score === 100 &&
-      (currentPackage.value?.declared_licenses_processed.spdx_expression.includes(f.license) ??
-        false),
+      licenseInExpression(
+        f.license,
+        currentPackage.value?.declared_licenses_processed.spdx_expression ?? '',
+      ),
   ),
 )
 
@@ -323,6 +327,7 @@ const decisionComment = ref('')
 const decisionReason = ref<Option['label']>('CODE')
 
 const showReviewed = ref(false)
+const concludeAfterReviewWarning = ref<CompatibilityCase | null>(null)
 
 function openTrustForm() {
   curationLicense.value = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
@@ -333,6 +338,51 @@ function openTrustForm() {
 function openCurationForm() {
   curationLicense.value = currentCuration.value?.concluded_license ?? ''
   curationComment.value = currentCuration.value?.comment ?? ''
+  showCurationForm.value = true
+}
+
+function openConcludeAfterReviewForm() {
+  if (!currentPackage.value) return
+  const declared = currentPackage.value.declared_licenses_processed.spdx_expression ?? ''
+  const excludePatterns = currentExcludes.value.map((e) => e.pattern)
+  const curationsMap = currentFindingCurationsMap.value
+
+  const effectiveLicenses: string[] = []
+
+  for (const f of allFindings.value) {
+    if (excludePatterns.some((p) => minimatch(f.location.path, p))) continue
+    const curation = curationsMap.get(findingCurationKey(f))
+    if (curation) {
+      if (curation.concluded_license !== 'NONE') {
+        effectiveLicenses.push(curation.concluded_license)
+      }
+    } else if (f.score === 100 && licenseInExpression(f.license, declared)) {
+      // already covered by declared license, skip
+    } else {
+      effectiveLicenses.push(f.license)
+    }
+  }
+
+  for (const dep of currentDeps.value) {
+    const depCuration = store.curations[dep.id]
+    if (depCuration?.concluded_license && depCuration.concluded_license !== 'NONE') {
+      effectiveLicenses.push(depCuration.concluded_license)
+    } else {
+      const depSpdx = dep.declared_licenses_processed.spdx_expression
+      if (depSpdx) {
+        effectiveLicenses.push(...extractLicenseIds(depSpdx))
+      } else {
+        effectiveLicenses.push('NOASSERTION')
+      }
+    }
+  }
+
+  const unique = [...new Set(effectiveLicenses)]
+  const result = analyzeCompatibility(unique, declared, store.compatibilityMatrix)
+
+  curationLicense.value = result.suggestedLicense
+  curationComment.value = result.comment
+  concludeAfterReviewWarning.value = result.case === 4 || result.case === 5 ? result : null
   showCurationForm.value = true
 }
 
@@ -514,6 +564,7 @@ watch(currentPackage, (pkg) => {
   showExcludeForm.value = false
   showCurationForm.value = false
   showDecisionForm.value = false
+  concludeAfterReviewWarning.value = null
   showReviewed.value = false
   if (pkg) {
     store.fetchPathExcludes(pkg.id)
@@ -722,29 +773,56 @@ watch(
                     </button>
                   </template>
                   <template v-else-if="showCurationForm">
-                    <div class="flex flex-wrap gap-2 items-center">
-                      <input
-                        v-model="curationLicense"
-                        placeholder="SPDX expression"
-                        class="border rounded px-2 py-0.5 text-xs font-mono"
-                      />
-                      <input
-                        v-model="curationComment"
-                        placeholder="Comment (optional)"
-                        class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
-                      />
-                      <button
-                        class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
-                        @click="confirmCuration"
+                    <div class="flex flex-col gap-1 w-full">
+                      <div
+                        v-if="concludeAfterReviewWarning?.case === 4"
+                        class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1"
                       >
-                        Confirm
-                      </button>
-                      <button
-                        class="text-xs text-gray-400 hover:text-gray-600"
-                        @click="showCurationForm = false"
+                        Warning: declared license is not compatible with
+                        <span class="font-mono">{{
+                          concludeAfterReviewWarning.incompatibleLicenses.join(', ')
+                        }}</span
+                        >. Suggested license is a combined AND expression.
+                      </div>
+                      <div
+                        v-if="concludeAfterReviewWarning?.case === 5"
+                        class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1"
                       >
-                        Cancel
-                      </button>
+                        Warning: compatibility could not be determined for
+                        <span class="font-mono">{{
+                          concludeAfterReviewWarning.unknownLicenses.join(', ')
+                        }}</span
+                        >. Please review manually.
+                      </div>
+                      <div class="flex flex-wrap gap-2 items-center">
+                        <input
+                          v-model="curationLicense"
+                          placeholder="SPDX expression"
+                          class="border rounded px-2 py-0.5 text-xs font-mono"
+                        />
+                        <input
+                          v-model="curationComment"
+                          placeholder="Comment (optional)"
+                          class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
+                        />
+                        <button
+                          class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
+                          @click="confirmCuration"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          class="text-xs text-gray-400 hover:text-gray-600"
+                          @click="
+                            () => {
+                              showCurationForm = false
+                              concludeAfterReviewWarning = null
+                            }
+                          "
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </template>
                   <template v-else>
@@ -756,7 +834,13 @@ watch(
                         Trust declared license
                       </button>
                       <button
-                        class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                        class="text-xs border rounded px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                        @click="openConcludeAfterReviewForm"
+                      >
+                        Conclude after review
+                      </button>
+                      <button
+                        class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
                         @click="openCurationForm"
                       >
                         Conclude license

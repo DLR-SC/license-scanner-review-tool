@@ -40,6 +40,7 @@ SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
 ORT_OUT_PATH = Path(__file__).parent / "ort-out"
 PKG_CONFIG_PATH = Path(__file__).parent / "ort-out" / "package-configurations.yml"
 CURATIONS_PATH = Path(__file__).parent / "ort-out" / "curations.yml"
+LICENSE_COMPATIBILITY_PATH = Path(__file__).parent / "license-compatibility.yml"
 
 _scan_data: dict | None = None
 
@@ -837,6 +838,21 @@ def set_finding_curation(req: SetFindingCurationRequest):
         package_id=req.package_id,
         license_finding_curations=_parse_finding_curations(entry),
     )
+
+
+@app.get("/license-compatibility")
+def get_license_compatibility() -> dict[str, dict[str, bool | None]]:
+    if not LICENSE_COMPATIBILITY_PATH.exists():
+        return {}
+    with open(LICENSE_COMPATIBILITY_PATH) as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        return {}
+    return {
+        str(found): {str(target): val for target, val in targets.items()}
+        for found, targets in data.items()
+        if isinstance(targets, dict)
+    }
 
 
 @app.delete("/finding-curations", response_model=PackageFindingCurations)

@@ -4,6 +4,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { CompatibilityMatrix } from '@/utils/licenseCompatibility'
 
 export interface VcsInfo {
   type: string
@@ -132,6 +133,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
   const curations = ref<Record<string, PackageCuration>>({})
   const findingCurations = ref<Record<string, LicenseFindingCuration[]>>({})
   const dependencyGraph = ref<OrtDependencyGraphs | null>(null)
+  const compatibilityMatrix = ref<CompatibilityMatrix>({})
 
   const rootPackageIds = computed<string[]>(() => {
     if (!dependencyGraph.value) return []
@@ -183,6 +185,14 @@ export const useScanResultStore = defineStore('scanResult', () => {
     return map
   })
 
+  async function fetchCompatibilityMatrix() {
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(new URL('/license-compatibility', base).toString())
+    if (res.ok) {
+      compatibilityMatrix.value = await res.json()
+    }
+  }
+
   async function fetchDependencyGraph() {
     const base = import.meta.env.VITE_API_BASE_URL || ''
     const res = await fetch(new URL('/dependency-graph', base).toString())
@@ -208,6 +218,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
       scanResults.value = data.scan_results
       await fetchDependencyGraph()
       await fetchAllCurations()
+      await fetchCompatibilityMatrix()
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
     } finally {
@@ -370,10 +381,12 @@ export const useScanResultStore = defineStore('scanResult', () => {
     curations,
     findingCurations,
     dependencyGraph,
+    compatibilityMatrix,
     rootPackageIds,
     dependencyMap,
     fetchScanResult,
     fetchDependencyGraph,
+    fetchCompatibilityMatrix,
     fetchPathExcludes,
     addPathExclude,
     removePathExclude,

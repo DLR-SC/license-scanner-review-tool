@@ -21,6 +21,7 @@
     "diff": "^8.0.4",
     "minimatch": "^10.2.4",
     "pinia": "^3.0.4",
+    "spdx-expression-parse": "^4.0.0",
     "vue": "^3.5.29",
     "vue-router": "^5.0.3"
   },
@@ -31,6 +32,7 @@
     "@types/cytoscape": "^3.31.0",
     "@types/cytoscape-dagre": "^2.3.4",
     "@types/node": "^24.11.0",
+    "@types/spdx-expression-parse": "^4.0.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/tsconfig": "^0.8.1",

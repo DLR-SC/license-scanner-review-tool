@@ -1,0 +1,417 @@
+# SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# License compatibility matrix for concluding package licenses.
+#
+# Answers: "Can code found under `found` be distributed under `target`?"
+#   true  - compatible
+#   false - incompatible
+#   (omitted) - unknown (triggers a warning in the UI)
+#
+# The matrix is NOT symmetric. Distributing X as Y may be allowed while Y as X is not.
+# WITH exceptions are treated as atomic identifiers (e.g. "GPL-2.0-only WITH Classpath-exception-2.0").
+
+MIT:
+  MIT: true
+  ISC: true
+  BSD-2-Clause: true
+  BSD-3-Clause: true
+  Apache-2.0: true
+  MPL-2.0: true
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: true
+  Unlicense: true
+
+ISC:
+  MIT: true
+  ISC: true
+  BSD-2-Clause: true
+  BSD-3-Clause: true
+  Apache-2.0: true
+  MPL-2.0: true
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: true
+  Unlicense: true
+
+BSD-2-Clause:
+  MIT: true
+  ISC: true
+  BSD-2-Clause: true
+  BSD-3-Clause: true
+  Apache-2.0: true
+  MPL-2.0: true
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: true
+  Unlicense: true
+
+BSD-3-Clause:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: true
+  Apache-2.0: true
+  MPL-2.0: true
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+CC0-1.0:
+  MIT: true
+  ISC: true
+  BSD-2-Clause: true
+  BSD-3-Clause: true
+  Apache-2.0: true
+  MPL-2.0: true
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: true
+  Unlicense: true
+
+Unlicense:
+  MIT: true
+  ISC: true
+  BSD-2-Clause: true
+  BSD-3-Clause: true
+  Apache-2.0: true
+  MPL-2.0: true
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: true
+  Unlicense: true
+
+Apache-2.0:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: true
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+MPL-2.0:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: true
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: false
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+LGPL-2.1-only:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: true
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: false
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: false
+  AGPL-3.0-or-later: false
+  CC0-1.0: false
+  Unlicense: false
+
+LGPL-2.1-or-later:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: true
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: false
+  AGPL-3.0-or-later: false
+  CC0-1.0: false
+  Unlicense: false
+
+LGPL-3.0-only:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: true
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: false
+  AGPL-3.0-or-later: false
+  CC0-1.0: false
+  Unlicense: false
+
+LGPL-3.0-or-later:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: true
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+GPL-2.0-only:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: true
+  GPL-2.0-or-later: false
+  GPL-3.0-only: false
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: false
+  AGPL-3.0-or-later: false
+  CC0-1.0: false
+  Unlicense: false
+
+GPL-2.0-or-later:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: true
+  GPL-2.0-or-later: true
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+GPL-3.0-only:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: true
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+GPL-3.0-or-later:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: true
+  GPL-3.0-or-later: true
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+AGPL-3.0-only:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: false
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: false
+  CC0-1.0: false
+  Unlicense: false
+
+AGPL-3.0-or-later:
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: false
+  GPL-2.0-or-later: false
+  GPL-3.0-only: false
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: true
+  AGPL-3.0-or-later: true
+  CC0-1.0: false
+  Unlicense: false
+
+# GPL with exceptions - the exception only affects downstream users linking to the library,
+# not redistribution of the library itself. Redistribution constraints match the base license.
+"GPL-2.0-only WITH Classpath-exception-2.0":
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: true
+  GPL-2.0-or-later: false
+  GPL-3.0-only: false
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: false
+  AGPL-3.0-or-later: false
+  "GPL-2.0-only WITH Classpath-exception-2.0": true
+  CC0-1.0: false
+  Unlicense: false
+
+"GPL-2.0-only WITH FOSS-exception-2.0":
+  MIT: false
+  ISC: false
+  BSD-2-Clause: false
+  BSD-3-Clause: false
+  Apache-2.0: false
+  MPL-2.0: false
+  LGPL-2.1-only: false
+  LGPL-2.1-or-later: false
+  LGPL-3.0-only: false
+  LGPL-3.0-or-later: false
+  GPL-2.0-only: true
+  GPL-2.0-or-later: false
+  GPL-3.0-only: false
+  GPL-3.0-or-later: false
+  AGPL-3.0-only: false
+  AGPL-3.0-or-later: false
+  "GPL-2.0-only WITH FOSS-exception-2.0": true
+  CC0-1.0: false
+  Unlicense: false
