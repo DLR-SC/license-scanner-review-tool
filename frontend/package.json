@@ -16,6 +16,8 @@
     "format:check": "prettier --check --experimental-cli src/"
   },
   "dependencies": {
+    "cytoscape": "^3.33.2",
+    "cytoscape-dagre": "^2.5.0",
     "diff": "^8.0.4",
     "minimatch": "^10.2.4",
     "pinia": "^3.0.4",
@@ -26,6 +28,8 @@
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@tsconfig/node24": "^24.0.4",
+    "@types/cytoscape": "^3.31.0",
+    "@types/cytoscape-dagre": "^2.3.4",
     "@types/node": "^24.11.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/eslint-config-typescript": "^14.7.0",

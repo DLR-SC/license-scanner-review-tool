@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
+import DependencyGraph from '@/components/DependencyGraph.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
@@ -636,185 +637,188 @@ watch(
           </template>
         </nav>
 
-        <table v-if="currentPackage" class="border-collapse w-full text-sm mb-6">
-          <tbody>
-            <tr>
-              <th class="border px-3 py-1.5 text-left w-40">ID</th>
-              <td class="border px-3 py-1.5">{{ currentPackage.id }}</td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">PURL</th>
-              <td class="border px-3 py-1.5">{{ currentPackage.purl }}</td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Registry</th>
-              <td class="border px-3 py-1.5">
-                <a
-                  v-if="registryUrl"
-                  :href="registryUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline"
-                  >{{ registryUrl }}</a
-                >
-              </td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Description</th>
-              <td class="border px-3 py-1.5">{{ currentPackage.description }}</td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Homepage</th>
-              <td class="border px-3 py-1.5">
-                <a
-                  v-if="currentPackage.homepage_url"
-                  :href="currentPackage.homepage_url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline"
-                  >{{ currentPackage.homepage_url }}</a
-                >
-              </td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">VCS</th>
-              <td class="border px-3 py-1.5">
-                <a
-                  v-if="currentPackage.vcs_url"
-                  :href="currentPackage.vcs_url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline"
-                  >{{ currentPackage.vcs_url }}</a
-                >
-              </td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Authors</th>
-              <td class="border px-3 py-1.5">{{ currentPackage.authors.join(', ') }}</td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Declared licenses</th>
-              <td class="border px-3 py-1.5">
-                {{
-                  currentPackage.declared_licenses_processed.spdx_expression ||
-                  currentPackage.declared_licenses.join(', ')
-                }}
-              </td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Detected licenses</th>
-              <td class="border px-3 py-1.5">{{ detectedLicenses }}</td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Concluded license</th>
-              <td class="border px-3 py-1.5">
-                <template v-if="currentCuration?.concluded_license && !showCurationForm">
-                  <span class="font-mono">{{ currentCuration.concluded_license }}</span>
-                  <span v-if="currentCuration.comment" class="text-gray-400 ml-2 text-xs">{{
-                    currentCuration.comment
-                  }}</span>
-                  <button
-                    class="ml-2 text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
-                    @click="openCurationForm"
+        <div class="flex gap-4 mb-6">
+          <table v-if="currentPackage" class="border-collapse text-sm flex-1 min-w-0 self-start">
+            <tbody>
+              <tr>
+                <th class="border px-3 py-1.5 text-left w-40">ID</th>
+                <td class="border px-3 py-1.5">{{ currentPackage.id }}</td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">PURL</th>
+                <td class="border px-3 py-1.5">{{ currentPackage.purl }}</td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Registry</th>
+                <td class="border px-3 py-1.5">
+                  <a
+                    v-if="registryUrl"
+                    :href="registryUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline"
+                    >{{ registryUrl }}</a
                   >
-                    Edit
-                  </button>
-                  <button
-                    class="ml-1 text-xs text-gray-400 hover:text-red-500"
-                    @click="store.removeCuration(currentPackage!.id)"
+                </td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Description</th>
+                <td class="border px-3 py-1.5">{{ currentPackage.description }}</td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Homepage</th>
+                <td class="border px-3 py-1.5">
+                  <a
+                    v-if="currentPackage.homepage_url"
+                    :href="currentPackage.homepage_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline"
+                    >{{ currentPackage.homepage_url }}</a
                   >
-                    ✕
-                  </button>
-                </template>
-                <template v-else-if="showCurationForm">
-                  <div class="flex flex-wrap gap-2 items-center">
-                    <input
-                      v-model="curationLicense"
-                      placeholder="SPDX expression"
-                      class="border rounded px-2 py-0.5 text-xs font-mono"
-                    />
-                    <input
-                      v-model="curationComment"
-                      placeholder="Comment (optional)"
-                      class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
-                    />
+                </td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">VCS</th>
+                <td class="border px-3 py-1.5">
+                  <a
+                    v-if="currentPackage.vcs_url"
+                    :href="currentPackage.vcs_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline"
+                    >{{ currentPackage.vcs_url }}</a
+                  >
+                </td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Authors</th>
+                <td class="border px-3 py-1.5">{{ currentPackage.authors.join(', ') }}</td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Declared licenses</th>
+                <td class="border px-3 py-1.5">
+                  {{
+                    currentPackage.declared_licenses_processed.spdx_expression ||
+                    currentPackage.declared_licenses.join(', ')
+                  }}
+                </td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Detected licenses</th>
+                <td class="border px-3 py-1.5">{{ detectedLicenses }}</td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Concluded license</th>
+                <td class="border px-3 py-1.5">
+                  <template v-if="currentCuration?.concluded_license && !showCurationForm">
+                    <span class="font-mono">{{ currentCuration.concluded_license }}</span>
+                    <span v-if="currentCuration.comment" class="text-gray-400 ml-2 text-xs">{{
+                      currentCuration.comment
+                    }}</span>
                     <button
-                      class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
-                      @click="confirmCuration"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      class="text-xs text-gray-400 hover:text-gray-600"
-                      @click="showCurationForm = false"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="flex flex-wrap gap-2 items-center">
-                    <button
-                      class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                      @click="openTrustForm"
-                    >
-                      Trust declared license
-                    </button>
-                    <button
-                      class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                      class="ml-2 text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
                       @click="openCurationForm"
                     >
-                      Conclude license
+                      Edit
                     </button>
-                  </div>
-                </template>
-              </td>
-            </tr>
-            <tr v-if="currentDeps.length">
-              <th class="border px-3 py-1.5 text-left align-top">Dependencies</th>
-              <td class="border px-3 py-1.5">
-                <ul class="flex flex-col gap-0.5">
-                  <li v-for="dep in currentDeps" :key="dep.id">
                     <button
-                      class="font-mono text-xs hover:underline text-left flex items-center gap-1.5"
-                      @click="navigateToDep(dep.id)"
+                      class="ml-1 text-xs text-gray-400 hover:text-red-500"
+                      @click="store.removeCuration(currentPackage!.id)"
                     >
-                      <span
-                        :class="
-                          store.curations[dep.id]?.concluded_license
-                            ? 'text-green-500'
-                            : 'text-gray-300'
-                        "
-                        aria-hidden="true"
-                        >●</span
-                      >
-                      {{ dep.id }}
+                      ✕
                     </button>
-                  </li>
-                </ul>
-              </td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
-              <td class="border px-3 py-1.5">
-                <span v-if="downloadsLoading">…</span>
-                <span v-else-if="weeklyDownloads !== null">{{
-                  weeklyDownloads.toLocaleString()
-                }}</span>
-                <span v-else>—</span>
-              </td>
-            </tr>
-            <tr>
-              <th class="border px-3 py-1.5 text-left">GitHub stars</th>
-              <td class="border px-3 py-1.5">
-                <span v-if="starsLoading">…</span>
-                <span v-else-if="githubStars !== null">{{ githubStars.toLocaleString() }}</span>
-                <span v-else>—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  </template>
+                  <template v-else-if="showCurationForm">
+                    <div class="flex flex-wrap gap-2 items-center">
+                      <input
+                        v-model="curationLicense"
+                        placeholder="SPDX expression"
+                        class="border rounded px-2 py-0.5 text-xs font-mono"
+                      />
+                      <input
+                        v-model="curationComment"
+                        placeholder="Comment (optional)"
+                        class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
+                      />
+                      <button
+                        class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
+                        @click="confirmCuration"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        class="text-xs text-gray-400 hover:text-gray-600"
+                        @click="showCurationForm = false"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="flex flex-wrap gap-2 items-center">
+                      <button
+                        class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                        @click="openTrustForm"
+                      >
+                        Trust declared license
+                      </button>
+                      <button
+                        class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                        @click="openCurationForm"
+                      >
+                        Conclude license
+                      </button>
+                    </div>
+                  </template>
+                </td>
+              </tr>
+              <tr v-if="currentDeps.length">
+                <th class="border px-3 py-1.5 text-left align-top">Dependencies</th>
+                <td class="border px-3 py-1.5">
+                  <ul class="flex flex-col gap-0.5">
+                    <li v-for="dep in currentDeps" :key="dep.id">
+                      <button
+                        class="font-mono text-xs hover:underline text-left flex items-center gap-1.5"
+                        @click="navigateToDep(dep.id)"
+                      >
+                        <span
+                          :class="
+                            store.curations[dep.id]?.concluded_license
+                              ? 'text-green-500'
+                              : 'text-gray-300'
+                          "
+                          aria-hidden="true"
+                          >●</span
+                        >
+                        {{ dep.id }}
+                      </button>
+                    </li>
+                  </ul>
+                </td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
+                <td class="border px-3 py-1.5">
+                  <span v-if="downloadsLoading">…</span>
+                  <span v-else-if="weeklyDownloads !== null">{{
+                    weeklyDownloads.toLocaleString()
+                  }}</span>
+                  <span v-else>—</span>
+                </td>
+              </tr>
+              <tr>
+                <th class="border px-3 py-1.5 text-left">GitHub stars</th>
+                <td class="border px-3 py-1.5">
+                  <span v-if="starsLoading">…</span>
+                  <span v-else-if="githubStars !== null">{{ githubStars.toLocaleString() }}</span>
+                  <span v-else>—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <DependencyGraph :current-package-id="currentPackage!.id" class="shrink-0" />
+        </div>
         <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
           <div
             v-if="vcsSiblings.length"
