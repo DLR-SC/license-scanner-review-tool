@@ -360,19 +360,6 @@ async function confirmExclude() {
   showExcludeForm.value = false
 }
 
-async function confirmFinding(f: LicenseFinding, concludedLicense: string) {
-  if (!currentPackage.value) return
-  await store.setFindingCuration(currentPackage.value.id, {
-    path: f.location.path,
-    start_lines: String(f.location.start_line),
-    line_count: f.location.end_line - f.location.start_line + 1,
-    detected_license: f.license,
-    reason: 'CODE',
-    comment: '',
-    concluded_license: concludedLicense,
-  })
-}
-
 async function confirmDecisionForm() {
   if (!currentPackage.value || !currentFinding.value) return
   await store.setFindingCuration(currentPackage.value.id, {
@@ -388,11 +375,16 @@ async function confirmDecisionForm() {
   showDecisionForm.value = false
 }
 
-function openDecisionForm() {
+const suggestedConcludeLicense = computed(() =>
+  // concluding to NOASSERTION is not very useful, so suggest NONE instead since often NOASSERTION is detected when no license text is found at all
+  currentFinding.value?.license === 'NOASSERTION' ? 'NONE' : (currentFinding.value?.license ?? ''),
+)
+
+function openDecisionForm(prefillLicense?: string) {
   if (!currentFinding.value) return
-  decisionLicense.value = currentFinding.value.license
+  decisionLicense.value = prefillLicense ?? ''
   decisionComment.value = ''
-  decisionReason.value = 'CODE'
+  decisionReason.value = currentFinding.value.license === 'NOASSERTION' ? 'REFERENCE' : 'CODE'
   showDecisionForm.value = true
 }
 
@@ -918,13 +910,13 @@ watch(
                 <template v-if="!showDecisionForm">
                   <button
                     class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                    @click="confirmFinding(currentFinding, currentFinding.license)"
+                    @click="openDecisionForm(suggestedConcludeLicense)"
                   >
-                    Confirm as {{ currentFinding.license }}
+                    Conclude as {{ suggestedConcludeLicense }}
                   </button>
                   <button
                     class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                    @click="openDecisionForm"
+                    @click="openDecisionForm()"
                   >
                     Other…
                   </button>
@@ -952,7 +944,7 @@ watch(
                   class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
                   @click="confirmDecisionForm"
                 >
-                  Confirm
+                  Conclude
                 </button>
                 <button
                   class="text-xs text-gray-400 hover:text-gray-600"
