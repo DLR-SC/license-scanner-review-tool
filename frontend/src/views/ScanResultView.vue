@@ -19,7 +19,7 @@ import {
   type Package,
 } from '@/stores/scanResult'
 import type { Option } from '@/components/DescribedSelect.vue'
-import { extractLicenseIds, licenseInExpression, buildAndExpression } from '@/utils/spdx'
+import { extractLicenseIds, licenseInExpression } from '@/utils/spdx'
 import { analyzeCompatibility, type CompatibilityCase } from '@/utils/licenseCompatibility'
 
 const store = useScanResultStore()
@@ -327,7 +327,9 @@ const decisionComment = ref('')
 const decisionReason = ref<Option['label']>('CODE')
 
 const showReviewed = ref(false)
-const concludeAfterReviewWarning = ref<CompatibilityCase | null>(null)
+const concludeAfterReviewWarning = ref<Extract<CompatibilityCase, { case: 'needs-review' }> | null>(
+  null,
+)
 
 function openTrustForm() {
   curationLicense.value = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
@@ -381,8 +383,13 @@ function openConcludeAfterReviewForm() {
   const result = analyzeCompatibility(unique, declared, store.compatibilityMatrix)
 
   curationLicense.value = result.suggestedLicense
-  curationComment.value = result.comment
-  concludeAfterReviewWarning.value = result.case === 4 || result.case === 5 ? result : null
+  if (result.case === 'declared-license-ok') {
+    curationComment.value = result.comment
+    concludeAfterReviewWarning.value = null
+  } else {
+    curationComment.value = ''
+    concludeAfterReviewWarning.value = result
+  }
   showCurationForm.value = true
 }
 
@@ -775,24 +782,27 @@ watch(
                   <template v-else-if="showCurationForm">
                     <div class="flex flex-col gap-1 w-full">
                       <div
-                        v-if="concludeAfterReviewWarning?.case === 4"
+                        v-if="concludeAfterReviewWarning?.incompatibleLicenses.length"
                         class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1"
                       >
-                        Warning: declared license is not compatible with
+                        The declared license is not compatible with
                         <span class="font-mono">{{
                           concludeAfterReviewWarning.incompatibleLicenses.join(', ')
                         }}</span
-                        >. Suggested license is a combined AND expression.
+                        >. The declared license cannot be used as the concluded license without
+                        violating the terms of these findings. The suggested license is a combined
+                        AND expression of all found licenses.
                       </div>
                       <div
-                        v-if="concludeAfterReviewWarning?.case === 5"
+                        v-if="concludeAfterReviewWarning?.unknownLicenses.length"
                         class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1"
                       >
-                        Warning: compatibility could not be determined for
+                        Compatibility with the declared license could not be determined for
                         <span class="font-mono">{{
                           concludeAfterReviewWarning.unknownLicenses.join(', ')
                         }}</span
-                        >. Please review manually.
+                        >. These licenses are not in the compatibility matrix and may require manual
+                        legal review before concluding.
                       </div>
                       <div class="flex flex-wrap gap-2 items-center">
                         <input
