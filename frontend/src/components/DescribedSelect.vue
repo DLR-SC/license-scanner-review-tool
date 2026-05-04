@@ -75,7 +75,9 @@ async function openDropdown() {
         @keydown.esc="open = false"
       >
         <div class="text-xs font-medium">{{ option.label }}</div>
-        <div v-if="option.description" class="text-xs text-gray-400 mt-0.5">{{ option.description }}</div>
+        <div v-if="option.description" class="text-xs text-gray-400 mt-0.5">
+          {{ option.description }}
+        </div>
       </button>
     </div>
   </div>
