@@ -709,71 +709,6 @@ watch(
                 <th class="border px-3 py-1.5 text-left">Detected licenses</th>
                 <td class="border px-3 py-1.5">{{ detectedLicenses }}</td>
               </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Concluded license</th>
-                <td class="border px-3 py-1.5">
-                  <template v-if="currentCuration?.concluded_license && !showCurationForm">
-                    <span class="font-mono">{{ currentCuration.concluded_license }}</span>
-                    <span v-if="currentCuration.comment" class="text-gray-400 ml-2 text-xs">{{
-                      currentCuration.comment
-                    }}</span>
-                    <button
-                      class="ml-2 text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
-                      @click="openCurationForm"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      class="ml-1 text-xs text-gray-400 hover:text-red-500"
-                      @click="store.removeCuration(currentPackage!.id)"
-                    >
-                      ✕
-                    </button>
-                  </template>
-                  <template v-else-if="showCurationForm">
-                    <div class="flex flex-wrap gap-2 items-center">
-                      <input
-                        v-model="curationLicense"
-                        placeholder="SPDX expression"
-                        class="border rounded px-2 py-0.5 text-xs font-mono"
-                      />
-                      <input
-                        v-model="curationComment"
-                        placeholder="Comment (optional)"
-                        class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
-                      />
-                      <button
-                        class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
-                        @click="confirmCuration"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        class="text-xs text-gray-400 hover:text-gray-600"
-                        @click="showCurationForm = false"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="flex flex-wrap gap-2 items-center">
-                      <button
-                        class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                        @click="openTrustForm"
-                      >
-                        Trust declared license
-                      </button>
-                      <button
-                        class="ml-2 text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                        @click="openCurationForm"
-                      >
-                        Conclude license
-                      </button>
-                    </div>
-                  </template>
-                </td>
-              </tr>
               <tr v-if="currentDeps.length">
                 <th class="border px-3 py-1.5 text-left align-top">Dependencies</th>
                 <td class="border px-3 py-1.5">
@@ -820,6 +755,74 @@ watch(
           </table>
           <DependencyGraph :current-package-id="currentPackage!.id" class="shrink-0" />
         </div>
+
+        <!-- Conclude license panel -->
+        <div class="mt-4 border rounded px-4 py-3">
+          <template v-if="showCurationForm">
+            <div class="flex flex-wrap gap-2 items-center">
+              <input
+                v-model="curationLicense"
+                placeholder="SPDX expression"
+                class="border rounded px-2 py-0.5 text-xs font-mono"
+              />
+              <input
+                v-model="curationComment"
+                placeholder="Comment (optional)"
+                class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
+              />
+              <button
+                class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
+                @click="confirmCuration"
+              >
+                Confirm
+              </button>
+              <button class="text-xs text-gray-400 hover:text-gray-600" @click="showCurationForm = false">
+                Cancel
+              </button>
+            </div>
+          </template>
+          <template v-else-if="currentCuration?.concluded_license">
+            <div class="flex items-baseline gap-3">
+              <span class="text-sm font-semibold shrink-0">Concluded license</span>
+              <span class="font-mono text-sm">{{ currentCuration.concluded_license }}</span>
+              <span v-if="currentCuration.comment" class="text-gray-400 text-xs">{{
+                currentCuration.comment
+              }}</span>
+              <div class="ml-auto flex items-center gap-1 shrink-0">
+                <button
+                  class="text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
+                  @click="openCurationForm"
+                >
+                  Edit
+                </button>
+                <button
+                  class="text-xs text-gray-400 hover:text-red-500 px-1"
+                  @click="store.removeCuration(currentPackage!.id)"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="currentPackage.declared_licenses_processed.spdx_expression"
+                class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                @click="openTrustForm"
+              >
+                Trust declared license
+              </button>
+              <button
+                class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
+                @click="openCurationForm"
+              >
+                Conclude license
+              </button>
+            </div>
+          </template>
+        </div>
+
         <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
           <div
             v-if="vcsSiblings.length"
