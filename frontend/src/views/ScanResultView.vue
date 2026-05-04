@@ -6,6 +6,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import AppButton from '@/components/AppButton.vue'
+import AppInput from '@/components/AppInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
 import LicensePill from '@/components/LicensePill.vue'
@@ -761,28 +763,14 @@ watch(
         <div class="mt-4 border rounded px-4 py-3">
           <template v-if="showCurationForm">
             <div class="flex flex-wrap gap-2 items-center">
-              <input
-                v-model="curationLicense"
-                placeholder="SPDX expression"
-                class="border rounded px-2 py-0.5 text-xs font-mono"
-              />
-              <input
+              <AppInput v-model="curationLicense" placeholder="SPDX expression" class="font-mono" />
+              <AppInput
                 v-model="curationComment"
                 placeholder="Comment (optional)"
-                class="border rounded px-2 py-0.5 text-xs flex-1 min-w-0"
+                class="flex-1 min-w-0"
               />
-              <button
-                class="text-xs border rounded px-2 py-0.5 bg-white hover:bg-gray-100"
-                @click="confirmCuration"
-              >
-                Confirm
-              </button>
-              <button
-                class="text-xs text-gray-400 hover:text-gray-600"
-                @click="showCurationForm = false"
-              >
-                Cancel
-              </button>
+              <AppButton @click="confirmCuration">Confirm</AppButton>
+              <AppButton variant="text" @click="showCurationForm = false">Cancel</AppButton>
             </div>
           </template>
           <template v-else-if="currentCuration?.concluded_license">
@@ -793,36 +781,23 @@ watch(
                 currentCuration.comment
               }}</span>
               <div class="ml-auto flex items-center gap-1 shrink-0">
-                <button
-                  class="text-xs border rounded px-1.5 py-0.5 text-gray-500 hover:bg-gray-50"
-                  @click="openCurationForm"
+                <AppButton @click="openCurationForm">Edit</AppButton>
+                <AppButton variant="danger" @click="store.removeCuration(currentPackage!.id)"
+                  >✕</AppButton
                 >
-                  Edit
-                </button>
-                <button
-                  class="text-xs text-gray-400 hover:text-red-500 px-1"
-                  @click="store.removeCuration(currentPackage!.id)"
-                >
-                  ✕
-                </button>
               </div>
             </div>
           </template>
           <template v-else>
             <div class="flex items-center gap-2">
-              <button
+              <AppButton
                 v-if="currentPackage.declared_licenses_processed.spdx_expression"
-                class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
+                variant="primary"
                 @click="openTrustForm"
               >
                 Trust declared license
-              </button>
-              <button
-                class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                @click="openCurationForm"
-              >
-                Conclude license
-              </button>
+              </AppButton>
+              <AppButton @click="openCurationForm">Conclude license</AppButton>
             </div>
           </template>
         </div>
@@ -849,12 +824,12 @@ watch(
             <div v-for="exc in currentExcludes" :key="exc.pattern" class="flex items-center gap-2">
               <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
               <span class="text-gray-500">{{ exc.reason }}</span>
-              <button
-                class="ml-auto text-gray-400 hover:text-red-500"
+              <AppButton
+                variant="danger"
+                class="ml-auto"
                 @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
+                >✕</AppButton
               >
-                ✕
-              </button>
             </div>
           </div>
           <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
@@ -871,20 +846,10 @@ watch(
                 >
               </h3>
               <div class="flex gap-2">
-                <button
-                  class="px-3 py-1 border rounded disabled:opacity-40"
-                  :disabled="findingIndex === 0"
-                  @click="findingIndex--"
+                <AppButton :disabled="findingIndex === 0" @click="findingIndex--">← Prev</AppButton>
+                <AppButton :disabled="findingIndex >= totalFindings - 1" @click="findingIndex++"
+                  >Next →</AppButton
                 >
-                  ← Prev
-                </button>
-                <button
-                  class="px-3 py-1 border rounded disabled:opacity-40"
-                  :disabled="findingIndex >= totalFindings - 1"
-                  @click="findingIndex++"
-                >
-                  Next →
-                </button>
               </div>
             </div>
             <div class="border rounded">
@@ -895,90 +860,51 @@ watch(
                     currentFinding.location.end_line
                   }}</span
                 >
-                <button
-                  v-if="!showExcludeForm"
-                  class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                  @click="openExcludeForm"
-                >
-                  Exclude path
-                </button>
+                <AppButton v-if="!showExcludeForm" @click="openExcludeForm">Exclude path</AppButton>
                 <template v-if="!showDecisionForm">
-                  <button
-                    class="text-xs border rounded px-2 py-0.5 bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
-                    @click="openDecisionForm(suggestedConcludeLicense)"
-                  >
+                  <AppButton variant="primary" @click="openDecisionForm(suggestedConcludeLicense)">
                     Conclude as {{ suggestedConcludeLicense }}
-                  </button>
-                  <button
-                    class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
-                    @click="openDecisionForm()"
-                  >
-                    Other…
-                  </button>
+                  </AppButton>
+                  <AppButton @click="openDecisionForm()">Other…</AppButton>
                 </template>
               </div>
               <div
                 v-if="showDecisionForm"
                 class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
               >
-                <input
+                <AppInput
                   v-model="decisionLicense"
                   placeholder="SPDX expression or NONE"
-                  class="border rounded px-2 py-1 text-xs font-mono flex-1 min-w-0"
+                  class="font-mono flex-1 min-w-0"
                 />
                 <DescribedSelect
                   v-model="decisionReason"
                   :options="LICENSE_FINDING_CURATIONS_REASONS"
                 />
-                <input
+                <AppInput
                   v-model="decisionComment"
                   placeholder="Comment (optional)"
-                  class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
+                  class="flex-1 min-w-0"
                 />
-                <button
-                  class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
-                  @click="confirmDecisionForm"
-                >
-                  Conclude
-                </button>
-                <button
-                  class="text-xs text-gray-400 hover:text-gray-600"
-                  @click="showDecisionForm = false"
-                >
-                  Cancel
-                </button>
+                <AppButton @click="confirmDecisionForm">Conclude</AppButton>
+                <AppButton variant="text" @click="showDecisionForm = false">Cancel</AppButton>
               </div>
               <div
                 v-if="showExcludeForm"
                 class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
               >
-                <select v-model="excludeFormPattern" class="border rounded px-2 py-1 text-xs">
-                  <option
-                    v-for="opt in pathExcludeOptions(currentFinding.location.path)"
-                    :key="opt"
-                    :value="opt"
-                  >
-                    {{ opt }}
-                  </option>
-                </select>
+                <DescribedSelect
+                  v-model="excludeFormPattern"
+                  :options="pathExcludeOptions(currentFinding.location.path)"
+                />
                 <DescribedSelect v-model="excludeFormReason" :options="PATH_EXCLUDE_REASONS" />
-                <input
+                <AppInput
                   v-model="excludeFormComment"
                   placeholder="Comment (optional)"
-                  class="border rounded px-2 py-1 text-xs flex-1 min-w-0"
+                  class="flex-1 min-w-0"
                 />
-                <button
-                  class="text-xs border rounded px-2 py-1 bg-white hover:bg-gray-100"
-                  @click="confirmExclude"
-                >
-                  Confirm
-                </button>
-                <button
-                  class="text-xs text-gray-400 hover:text-gray-600"
-                  @click="showExcludeForm = false"
-                >
-                  Cancel
-                </button>
+                <AppButton @click="confirmExclude">Confirm</AppButton>
+                <AppButton variant="text" @click="showExcludeForm = false">Cancel</AppButton>
               </div>
               <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
               <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
@@ -1085,9 +1011,7 @@ watch(
                   class="text-gray-400"
                   >{{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}</span
                 >
-                <button class="text-gray-400 hover:text-red-500" @click="removeFindingCuration(f)">
-                  ✕
-                </button>
+                <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
               </div>
             </div>
           </div>

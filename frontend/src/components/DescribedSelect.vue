@@ -5,14 +5,18 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
 export interface Option {
   label: string
-  description: string
+  description?: string
 }
 
-defineProps<{ options: Option[] }>()
+const props = defineProps<{ options: (string | Option)[] }>()
+
+const normalizedOptions = computed(() =>
+  props.options.map((o): Option => (typeof o === 'string' ? { label: o } : o)),
+)
 const model = defineModel<Option['label']>({ required: true })
 
 const open = ref(false)
@@ -42,8 +46,8 @@ async function openDropdown() {
       role="combobox"
       aria-haspopup="listbox"
       :aria-expanded="open"
-      class="border rounded px-2 py-1 text-xs text-left bg-white flex items-center gap-1"
-      @click.stop="open ? (open = false) : openDropdown()"
+      class="border rounded px-2 py-1 text-sm text-left bg-white flex items-center gap-1"
+      @click="open ? (open = false) : openDropdown()"
     >
       {{ model }}
       <span class="text-gray-400">▾</span>
@@ -55,7 +59,7 @@ async function openDropdown() {
       class="absolute z-50 mt-1 w-80 bg-white border rounded shadow-lg max-h-72 overflow-y-auto"
     >
       <button
-        v-for="option in options"
+        v-for="option in normalizedOptions"
         :key="option.label"
         type="button"
         role="option"
@@ -71,7 +75,7 @@ async function openDropdown() {
         @keydown.esc="open = false"
       >
         <div class="text-xs font-medium">{{ option.label }}</div>
-        <div class="text-xs text-gray-400 mt-0.5">{{ option.description }}</div>
+        <div v-if="option.description" class="text-xs text-gray-400 mt-0.5">{{ option.description }}</div>
       </button>
     </div>
   </div>
