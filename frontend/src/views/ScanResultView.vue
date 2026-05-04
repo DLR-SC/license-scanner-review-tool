@@ -11,7 +11,7 @@ import AppInput from '@/components/AppInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
 import LicensePill from '@/components/LicensePill.vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
 import { minimatch } from 'minimatch'
@@ -25,7 +25,6 @@ import type { Option } from '@/components/DescribedSelect.vue'
 
 const store = useScanResultStore()
 const route = useRoute()
-const router = useRouter()
 onMounted(() => store.fetchScanResult())
 
 const MANIFEST_FILES = new Set([
@@ -180,17 +179,6 @@ const purlToPackage = computed(() => {
 
 function purlPath(purls: string[]): string {
   return '/review/' + purls.join(';')
-}
-
-function navigateToDep(depId: string) {
-  const pkg = store.packages.find((p) => p.id === depId)
-  if (!pkg?.purl) return
-  const newPath = [...navigationPath.value, pkg.purl]
-  router.push(purlPath(newPath))
-}
-
-function navigateToRoot(purl: string) {
-  router.push(purlPath([purl]))
 }
 
 // Dependencies of the current package (as package objects)
@@ -594,9 +582,9 @@ watch(
         <h1 class="text-xl font-semibold mb-4">Select a package to review</h1>
         <ul class="flex flex-col gap-1">
           <li v-for="rootId in store.rootPackageIds" :key="rootId">
-            <button
+            <RouterLink
               class="text-left px-3 py-2 border rounded w-full hover:bg-gray-50 font-mono text-sm flex items-center gap-2"
-              @click="navigateToRoot(store.packages.find((p) => p.id === rootId)?.purl ?? '')"
+              :to="purlPath([store.packages.find((p) => p.id === rootId)?.purl ?? ''])"
             >
               <span
                 :class="
@@ -606,7 +594,7 @@ watch(
                 >●</span
               >
               {{ rootId }}
-            </button>
+            </RouterLink>
           </li>
         </ul>
       </template>
@@ -614,18 +602,19 @@ watch(
       <template v-else>
         <!-- Breadcrumb -->
         <nav
-          v-if="navigationPath.length > 1"
+          v-if="navigationPath.length > 0"
           class="flex items-center gap-1 text-sm text-gray-500 mb-4 flex-wrap"
         >
+          <RouterLink to="/review/" class="hover:underline">Your project</RouterLink>
           <template v-for="(purl, i) in navigationPath" :key="purl">
-            <span v-if="i > 0" class="text-gray-300">/</span>
-            <button
+            <span class="text-gray-300">/</span>
+            <RouterLink
               v-if="i < navigationPath.length - 1"
               class="hover:underline"
-              @click="router.push(purlPath(navigationPath.slice(0, i + 1)))"
+              :to="purlPath(navigationPath.slice(0, i + 1))"
             >
               {{ purlToPackage.get(purl)?.id ?? purl }}
-            </button>
+            </RouterLink>
             <span v-else class="text-gray-800 font-medium">{{
               purlToPackage.get(purl)?.id ?? purl
             }}</span>
@@ -717,9 +706,14 @@ watch(
                 <td class="border px-3 py-1.5">
                   <ul class="flex flex-col gap-0.5">
                     <li v-for="dep in currentDeps" :key="dep.id">
-                      <button
+                      <RouterLink
                         class="font-mono text-xs hover:underline text-left flex items-center gap-1.5"
-                        @click="navigateToDep(dep.id)"
+                        :to="
+                          purlPath([
+                            ...navigationPath,
+                            store.packages.find((p) => p.id === dep.id)?.purl ?? '',
+                          ])
+                        "
                       >
                         <span
                           :class="
@@ -731,7 +725,7 @@ watch(
                           >●</span
                         >
                         {{ dep.id }}
-                      </button>
+                      </RouterLink>
                     </li>
                   </ul>
                 </td>
