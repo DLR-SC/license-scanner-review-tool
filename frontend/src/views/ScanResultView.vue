@@ -690,6 +690,15 @@ watch(
               <tr>
                 <th class="border px-3 py-1.5 text-left">Declared licenses</th>
                 <td class="border px-3 py-1.5">
+                  <span
+                    v-if="!currentPackage.declared_licenses_processed.spdx_expression"
+                    :title="
+                      currentPackage.declared_licenses.length === 0
+                        ? 'No declared license found'
+                        : 'Not a valid SPDX expression'
+                    "
+                    >⚠️</span
+                  >
                   {{
                     currentPackage.declared_licenses_processed.spdx_expression ||
                     currentPackage.declared_licenses.join(', ')
