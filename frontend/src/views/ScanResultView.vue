@@ -13,6 +13,7 @@ import AppInput from '@/components/AppInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
 import AppPanel from '@/components/AppPanel.vue'
+import AppCard from '@/components/AppCard.vue'
 import LicensePill from '@/components/LicensePill.vue'
 import { useRoute } from 'vue-router'
 import { diffWords } from 'diff'
@@ -878,27 +879,29 @@ watch(
                   >
                 </div>
               </div>
-              <div class="border rounded">
-                <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
-                  <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
-                  <span class="text-gray-500"
-                    >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
-                      currentFinding.location.end_line
-                    }}</span
-                  >
-                  <AppButton v-if="!showExcludeForm" @click="openExcludeForm"
-                    >Exclude path</AppButton
-                  >
-                  <template v-if="!showDecisionForm">
-                    <AppButton
-                      variant="primary"
-                      @click="openDecisionForm(suggestedConcludeLicense)"
+              <AppCard>
+                <template #title>
+                  <div class="flex items-center gap-3 text-sm">
+                    <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
+                    <span class="text-gray-500"
+                      >{{ currentFinding.location.path }}:{{
+                        currentFinding.location.start_line
+                      }}–{{ currentFinding.location.end_line }}</span
                     >
-                      Conclude as {{ suggestedConcludeLicense }}
-                    </AppButton>
-                    <AppButton @click="openDecisionForm()">Other…</AppButton>
-                  </template>
-                </div>
+                    <AppButton v-if="!showExcludeForm" @click="openExcludeForm"
+                      >Exclude path</AppButton
+                    >
+                    <template v-if="!showDecisionForm">
+                      <AppButton
+                        variant="primary"
+                        @click="openDecisionForm(suggestedConcludeLicense)"
+                      >
+                        Conclude as {{ suggestedConcludeLicense }}
+                      </AppButton>
+                      <AppButton @click="openDecisionForm()">Other…</AppButton>
+                    </template>
+                  </div>
+                </template>
                 <div
                   v-if="showDecisionForm"
                   class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
@@ -960,22 +963,24 @@ watch(
                     @click="findingIndex = reviewFindings.indexOf(f)"
                   />
                 </div>
-              </div>
+              </AppCard>
               <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
                 Loading canonical text…
               </div>
-              <div v-else-if="wordDiff" class="bg-gray-50 rounded mt-2">
-                <div class="px-3 py-2 text-sm text-gray-500">
-                  Diff vs. canonical
-                  <span class="font-mono">{{ currentFinding.license }}</span>
-                </div>
+              <AppCard v-else-if="wordDiff" class="mt-2">
+                <template #title>
+                  <span class="text-sm text-gray-600"
+                    >Diff vs. canonical
+                    <span class="font-mono">{{ currentFinding.license }}</span></span
+                  >
+                </template>
                 <pre
                   class="overflow-x-auto text-xs px-3 py-2"
                 ><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
                 'bg-green-100 text-green-800': change.added,
                 'bg-red-100 text-red-700 line-through': change.removed,
               }">{{ change.value }}</span></template></pre>
-              </div>
+              </AppCard>
             </template>
             <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
               <div
