@@ -625,7 +625,11 @@ watch(
         </nav>
 
         <div class="flex gap-4 mb-4">
-          <AppPanel title="Package metadata" class="flex-1 min-w-0">
+          <AppPanel
+            title="Package metadata"
+            tooltip="General information about this package: its identifier, source repository, declared and detected licenses, dependencies, and popularity metrics."
+            class="flex-1 min-w-0"
+          >
             <div>
               <table v-if="currentPackage" class="text-sm w-full">
                 <tbody class="divide-y divide-gray-100">
@@ -693,6 +697,7 @@ watch(
                     <td class="px-4 py-2">
                       <InfoTooltip
                         v-if="!currentPackage.declared_licenses_processed.spdx_expression"
+                        warning
                         :text="
                           currentPackage.declared_licenses.length === 0
                             ? 'No declared license found'
@@ -769,13 +774,21 @@ watch(
               </table>
             </div>
           </AppPanel>
-          <AppPanel title="Dependency Graph" class="shrink-0">
+          <AppPanel
+            title="Dependency Graph"
+            tooltip="Visual overview of the dependency tree useful to orient yourself while reviewing the packages and to see the progress you've made. The tree starts with the root project at the top. Packages with concluded licenses are marked green, the currently selected package is highlighted with a blue border. Hovering over a node shows the package name."
+            class="shrink-0"
+          >
             <DependencyGraph :current-package-id="currentPackage!.id" />
           </AppPanel>
         </div>
 
         <!-- Review panel -->
-        <AppPanel title="License review" class="mt-4">
+        <AppPanel
+          title="License review"
+          tooltip="Review the license findings and the dependencies before concluding the license for this package. Or trust the declared license if you are confident it's correct. For each finding you can view the detected license text in context, compare it to a canonical version of the license, and then decide to exclude the file from the scan results or to conclude a specific license for the finding."
+          class="mt-4"
+        >
           <div class="px-4 py-3">
             <template v-if="showCurationForm">
               <div class="flex flex-wrap gap-2 items-center">
