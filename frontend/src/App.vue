@@ -9,7 +9,9 @@ import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <header class="leading-none max-h-screen lg:flex lg:items-center border-b justify-between p-1">
+  <header
+    class="leading-none max-h-screen lg:flex lg:items-center border-b justify-between px-4 py-1"
+  >
     <RouterLink to="/">
       <h1 class="text-xl font-bold text-gray-900 sm:text-2xl">License Scanner Review Tool</h1>
     </RouterLink>
