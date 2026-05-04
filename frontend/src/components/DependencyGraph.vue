@@ -256,7 +256,7 @@ watch(
     <div
       v-if="tooltip.visible"
       ref="tooltipEl"
-      class="absolute pointer-events-none z-10 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-900 shadow-sm whitespace-nowrap"
+      class="absolute pointer-events-none z-10 bg-white border border-gray-200 rounded px-2 py-0.5 text-sm text-gray-900 shadow-sm whitespace-nowrap"
       :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
     >
       {{ tooltip.text }}
