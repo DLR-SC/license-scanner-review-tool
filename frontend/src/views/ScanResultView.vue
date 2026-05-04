@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, onMounted } from 'vue'
 import CarbonCheckmarkFilled from '~icons/carbon/checkmark-filled'
 import AppButton from '@/components/AppButton.vue'
+import InfoTooltip from '@/components/InfoTooltip.vue'
 import AppInput from '@/components/AppInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
@@ -682,15 +683,14 @@ watch(
               <tr>
                 <th class="border px-3 py-1.5 text-left">Declared licenses</th>
                 <td class="border px-3 py-1.5">
-                  <span
+                  <InfoTooltip
                     v-if="!currentPackage.declared_licenses_processed.spdx_expression"
-                    :title="
+                    :text="
                       currentPackage.declared_licenses.length === 0
                         ? 'No declared license found'
                         : 'Not a valid SPDX expression'
                     "
-                    >⚠️</span
-                  >
+                  />
                   {{
                     currentPackage.declared_licenses_processed.spdx_expression ||
                     currentPackage.declared_licenses.join(', ')
