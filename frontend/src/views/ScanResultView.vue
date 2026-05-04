@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import CarbonCheckmarkFilled from '~icons/carbon/checkmark-filled'
 import AppButton from '@/components/AppButton.vue'
 import AppInput from '@/components/AppInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
@@ -586,13 +587,12 @@ watch(
               class="text-left px-3 py-2 border rounded w-full hover:bg-gray-50 font-mono text-sm flex items-center gap-2"
               :to="purlPath([store.packages.find((p) => p.id === rootId)?.purl ?? ''])"
             >
-              <span
+              <CarbonCheckmarkFilled
                 :class="
                   store.curations[rootId]?.concluded_license ? 'text-green-500' : 'text-gray-300'
                 "
                 aria-hidden="true"
-                >●</span
-              >
+              />
               {{ rootId }}
             </RouterLink>
           </li>
@@ -715,15 +715,14 @@ watch(
                           ])
                         "
                       >
-                        <span
+                        <CarbonCheckmarkFilled
                           :class="
                             store.curations[dep.id]?.concluded_license
                               ? 'text-green-500'
                               : 'text-gray-300'
                           "
                           aria-hidden="true"
-                          >●</span
-                        >
+                        />
                         {{ dep.id }}
                       </RouterLink>
                     </li>

@@ -16,6 +16,7 @@
     "format:check": "prettier --check --experimental-cli src/"
   },
   "dependencies": {
+    "@iconify-json/carbon": "^1.2.20",
     "cytoscape": "^3.33.2",
     "cytoscape-dagre": "^2.5.0",
     "diff": "^8.0.4",
@@ -43,6 +44,7 @@
     "prettier": "3.8.1",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
+    "unplugin-icons": "^23.0.1",
     "vite": "^7.3.1",
     "vite-plugin-vue-devtools": "^8.0.6",
     "vue-tsc": "^3.2.5"
