@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, onMounted } from 'vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
+import LicensePill from '@/components/LicensePill.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { diffWords } from 'diff'
 import type { Change } from 'diff'
@@ -776,7 +777,10 @@ watch(
               >
                 Confirm
               </button>
-              <button class="text-xs text-gray-400 hover:text-gray-600" @click="showCurationForm = false">
+              <button
+                class="text-xs text-gray-400 hover:text-gray-600"
+                @click="showCurationForm = false"
+              >
                 Cancel
               </button>
             </div>
@@ -885,33 +889,12 @@ watch(
             </div>
             <div class="border rounded">
               <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
-                <span class="font-mono font-semibold">{{ currentFinding.license }}</span>
+                <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
                 <span class="text-gray-500"
                   >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
                     currentFinding.location.end_line
                   }}</span
                 >
-                <span class="ml-auto text-gray-400">score {{ currentFinding.score }}</span>
-                <template v-if="siblingFindingsInFile.length">
-                  <span class="text-gray-300">|</span>
-                  <span class="text-gray-400 text-xs">Also in file:</span>
-                  <button
-                    v-for="(f, i) in siblingFindingsInFile"
-                    :key="i"
-                    class="text-xs border rounded px-1.5 py-0.5 font-mono"
-                    :class="
-                      reviewFindings.indexOf(f) !== -1
-                        ? 'text-gray-600 hover:bg-gray-100 cursor-pointer'
-                        : 'text-gray-400 cursor-default'
-                    "
-                    :disabled="reviewFindings.indexOf(f) === -1"
-                    @click="
-                      reviewFindings.indexOf(f) !== -1 && (findingIndex = reviewFindings.indexOf(f))
-                    "
-                  >
-                    {{ f.license }} | {{ f.score }}
-                  </button>
-                </template>
                 <button
                   v-if="!showExcludeForm"
                   class="text-xs border rounded px-2 py-0.5 text-gray-500 hover:bg-gray-50"
@@ -1005,6 +988,21 @@ watch(
                 v-else
                 class="overflow-x-auto text-xs"
               ><button v-if="(fileContent[0]?.number ?? 0) > 1" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></button><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><button v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></button></pre>
+              <div
+                v-if="siblingFindingsInFile.length"
+                class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-t"
+              >
+                <span class="text-gray-900 text-xs">Other license findings in this file:</span>
+                <LicensePill
+                  v-for="(f, i) in siblingFindingsInFile"
+                  :key="i"
+                  clickable
+                  :license="f.license"
+                  :score="f.score"
+                  :disabled="reviewFindings.indexOf(f) === -1"
+                  @click="findingIndex = reviewFindings.indexOf(f)"
+                />
+              </div>
             </div>
             <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
               Loading canonical text…
