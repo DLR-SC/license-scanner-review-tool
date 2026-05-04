@@ -82,6 +82,20 @@ const styleSheet: cytoscape.StylesheetStyle[] = [
     },
   },
   {
+    selector: ':active',
+    style: {
+      events: 'no',
+      'overlay-opacity': 0,
+    },
+  },
+  {
+    selector: 'core',
+    style: {
+      events: 'no',
+      'active-bg-opacity': 0,
+    },
+  },
+  {
     selector: 'edge',
     style: {
       width: 2,
@@ -175,6 +189,7 @@ onMounted(async () => {
     userZoomingEnabled: false,
     userPanningEnabled: false,
     autoungrabify: true,
+    boxSelectionEnabled: false,
   })
   cy.on('mouseover', 'node', async (e) => {
     const pos = e.target.renderedPosition() as { x: number; y: number }
