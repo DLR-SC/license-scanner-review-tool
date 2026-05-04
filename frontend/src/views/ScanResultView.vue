@@ -625,134 +625,148 @@ watch(
 
         <div class="flex gap-4 mb-4">
           <AppPanel title="Package metadata" class="flex-1 min-w-0">
-          <div class="p-3">
-            <table v-if="currentPackage" class="border-collapse text-sm w-full">
-            <tbody>
-              <tr>
-                <th class="border px-3 py-1.5 text-left w-40">ID</th>
-                <td class="border px-3 py-1.5">{{ currentPackage.id }}</td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">PURL</th>
-                <td class="border px-3 py-1.5">{{ currentPackage.purl }}</td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Registry</th>
-                <td class="border px-3 py-1.5">
-                  <a
-                    v-if="registryUrl"
-                    :href="registryUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="underline"
-                    >{{ registryUrl }}</a
-                  >
-                </td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Description</th>
-                <td class="border px-3 py-1.5">{{ currentPackage.description }}</td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Homepage</th>
-                <td class="border px-3 py-1.5">
-                  <a
-                    v-if="currentPackage.homepage_url"
-                    :href="currentPackage.homepage_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="underline"
-                    >{{ currentPackage.homepage_url }}</a
-                  >
-                </td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">VCS</th>
-                <td class="border px-3 py-1.5">
-                  <a
-                    v-if="currentPackage.vcs_url"
-                    :href="currentPackage.vcs_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="underline"
-                    >{{ currentPackage.vcs_url }}</a
-                  >
-                </td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Authors</th>
-                <td class="border px-3 py-1.5">{{ currentPackage.authors.join(', ') }}</td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Declared licenses</th>
-                <td class="border px-3 py-1.5">
-                  <InfoTooltip
-                    v-if="!currentPackage.declared_licenses_processed.spdx_expression"
-                    :text="
-                      currentPackage.declared_licenses.length === 0
-                        ? 'No declared license found'
-                        : 'Not a valid SPDX expression'
-                    "
-                  />
-                  {{
-                    currentPackage.declared_licenses_processed.spdx_expression ||
-                    currentPackage.declared_licenses.join(', ')
-                  }}
-                </td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Detected licenses</th>
-                <td class="border px-3 py-1.5">{{ detectedLicenses }}</td>
-              </tr>
-              <tr v-if="currentDeps.length">
-                <th class="border px-3 py-1.5 text-left align-top">Dependencies</th>
-                <td class="border px-3 py-1.5">
-                  <ul class="flex flex-col gap-0.5">
-                    <li v-for="dep in currentDeps" :key="dep.id">
-                      <RouterLink
-                        class="font-mono text-xs hover:underline text-left flex items-center gap-1.5"
-                        :to="
-                          purlPath([
-                            ...navigationPath,
-                            store.packages.find((p) => p.id === dep.id)?.purl ?? '',
-                          ])
-                        "
+            <div>
+              <table v-if="currentPackage" class="text-sm w-full">
+                <tbody class="divide-y divide-gray-100">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 w-40">ID</th>
+                    <td class="px-4 py-2">{{ currentPackage.id }}</td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">PURL</th>
+                    <td class="px-4 py-2">{{ currentPackage.purl }}</td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Registry</th>
+                    <td class="px-4 py-2">
+                      <a
+                        v-if="registryUrl"
+                        :href="registryUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="underline"
+                        >{{ registryUrl }}</a
                       >
-                        <CarbonCheckmarkFilled
-                          :class="
-                            store.curations[dep.id]?.concluded_license
-                              ? 'text-green-500'
-                              : 'text-gray-300'
-                          "
-                          aria-hidden="true"
-                        />
-                        {{ dep.id }}
-                      </RouterLink>
-                    </li>
-                  </ul>
-                </td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">Weekly downloads</th>
-                <td class="border px-3 py-1.5">
-                  <span v-if="downloadsLoading">…</span>
-                  <span v-else-if="weeklyDownloads !== null">{{
-                    weeklyDownloads.toLocaleString()
-                  }}</span>
-                  <span v-else>—</span>
-                </td>
-              </tr>
-              <tr>
-                <th class="border px-3 py-1.5 text-left">GitHub stars</th>
-                <td class="border px-3 py-1.5">
-                  <span v-if="starsLoading">…</span>
-                  <span v-else-if="githubStars !== null">{{ githubStars.toLocaleString() }}</span>
-                  <span v-else>—</span>
-                </td>
-              </tr>
-            </tbody>
-            </table>
-          </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      Description
+                    </th>
+                    <td class="px-4 py-2">{{ currentPackage.description }}</td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Homepage</th>
+                    <td class="px-4 py-2">
+                      <a
+                        v-if="currentPackage.homepage_url"
+                        :href="currentPackage.homepage_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="underline"
+                        >{{ currentPackage.homepage_url }}</a
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">VCS</th>
+                    <td class="px-4 py-2">
+                      <a
+                        v-if="currentPackage.vcs_url"
+                        :href="currentPackage.vcs_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="underline"
+                        >{{ currentPackage.vcs_url }}</a
+                      >
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Authors</th>
+                    <td class="px-4 py-2">{{ currentPackage.authors.join(', ') }}</td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      Declared licenses
+                    </th>
+                    <td class="px-4 py-2">
+                      <InfoTooltip
+                        v-if="!currentPackage.declared_licenses_processed.spdx_expression"
+                        :text="
+                          currentPackage.declared_licenses.length === 0
+                            ? 'No declared license found'
+                            : 'Not a valid SPDX expression'
+                        "
+                      />
+                      {{
+                        currentPackage.declared_licenses_processed.spdx_expression ||
+                        currentPackage.declared_licenses.join(', ')
+                      }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      Detected licenses
+                    </th>
+                    <td class="px-4 py-2">{{ detectedLicenses }}</td>
+                  </tr>
+                  <tr v-if="currentDeps.length">
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 align-top">
+                      Dependencies
+                    </th>
+                    <td class="px-4 py-2">
+                      <ul class="flex flex-col gap-0.5">
+                        <li v-for="dep in currentDeps" :key="dep.id">
+                          <RouterLink
+                            class="font-mono text-xs hover:underline text-left flex items-center gap-1.5"
+                            :to="
+                              purlPath([
+                                ...navigationPath,
+                                store.packages.find((p) => p.id === dep.id)?.purl ?? '',
+                              ])
+                            "
+                          >
+                            <CarbonCheckmarkFilled
+                              :class="
+                                store.curations[dep.id]?.concluded_license
+                                  ? 'text-green-500'
+                                  : 'text-gray-300'
+                              "
+                              aria-hidden="true"
+                            />
+                            {{ dep.id }}
+                          </RouterLink>
+                        </li>
+                      </ul>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      Weekly downloads
+                    </th>
+                    <td class="px-4 py-2">
+                      <span v-if="downloadsLoading">…</span>
+                      <span v-else-if="weeklyDownloads !== null">{{
+                        weeklyDownloads.toLocaleString()
+                      }}</span>
+                      <span v-else>—</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                      GitHub stars
+                    </th>
+                    <td class="px-4 py-2">
+                      <span v-if="starsLoading">…</span>
+                      <span v-else-if="githubStars !== null">{{
+                        githubStars.toLocaleString()
+                      }}</span>
+                      <span v-else>—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </AppPanel>
           <AppPanel title="Dependency Graph" class="shrink-0">
             <DependencyGraph :current-package-id="currentPackage!.id" />
@@ -761,259 +775,278 @@ watch(
 
         <!-- Review panel -->
         <AppPanel title="License review" class="mt-4">
-          <div class="px-4 py-3" :class="{ 'border-b': allFindings.length }">
-          <template v-if="showCurationForm">
-            <div class="flex flex-wrap gap-2 items-center">
-              <AppInput v-model="curationLicense" placeholder="SPDX expression" class="font-mono" />
-              <AppInput
-                v-model="curationComment"
-                placeholder="Comment (optional)"
-                class="flex-1 min-w-0"
-              />
-              <AppButton @click="confirmCuration">Confirm</AppButton>
-              <AppButton variant="text" @click="showCurationForm = false">Cancel</AppButton>
+          <div class="px-4 py-3">
+            <template v-if="showCurationForm">
+              <div class="flex flex-wrap gap-2 items-center">
+                <AppInput
+                  v-model="curationLicense"
+                  placeholder="SPDX expression"
+                  class="font-mono"
+                />
+                <AppInput
+                  v-model="curationComment"
+                  placeholder="Comment (optional)"
+                  class="flex-1 min-w-0"
+                />
+                <AppButton @click="confirmCuration">Confirm</AppButton>
+                <AppButton variant="text" @click="showCurationForm = false">Cancel</AppButton>
+              </div>
+            </template>
+            <template v-else-if="currentCuration?.concluded_license">
+              <div class="flex items-baseline gap-3">
+                <span class="text-sm font-semibold shrink-0">Concluded license</span>
+                <span class="font-mono text-sm">{{ currentCuration.concluded_license }}</span>
+                <span v-if="currentCuration.comment" class="text-gray-400 text-xs">{{
+                  currentCuration.comment
+                }}</span>
+                <div class="ml-auto flex items-center gap-1 shrink-0">
+                  <AppButton @click="openCurationForm">Edit</AppButton>
+                  <AppButton variant="danger" @click="store.removeCuration(currentPackage!.id)"
+                    >✕</AppButton
+                  >
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center gap-2">
+                <AppButton
+                  v-if="currentPackage.declared_licenses_processed.spdx_expression"
+                  variant="primary"
+                  @click="openTrustForm"
+                >
+                  Trust declared license
+                </AppButton>
+                <AppButton @click="openCurationForm">Conclude license</AppButton>
+              </div>
+            </template>
+          </div>
+          <div
+            v-if="allFindings.length"
+            class="px-4 py-3 border-t border-gray-100 flex flex-col gap-2"
+          >
+            <div
+              v-if="vcsSiblings.length"
+              class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+            >
+              This package originates from the same source repository as other packages in your
+              dependencies. Thus the license findings also apply to those packages:
+              <span v-for="(sibling, i) in vcsSiblings" :key="sibling" class="font-mono"
+                >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
+              >.
             </div>
-          </template>
-          <template v-else-if="currentCuration?.concluded_license">
-            <div class="flex items-baseline gap-3">
-              <span class="text-sm font-semibold shrink-0">Concluded license</span>
-              <span class="font-mono text-sm">{{ currentCuration.concluded_license }}</span>
-              <span v-if="currentCuration.comment" class="text-gray-400 text-xs">{{
-                currentCuration.comment
-              }}</span>
-              <div class="ml-auto flex items-center gap-1 shrink-0">
-                <AppButton @click="openCurationForm">Edit</AppButton>
-                <AppButton variant="danger" @click="store.removeCuration(currentPackage!.id)"
+            <div
+              v-if="currentExcludes.length"
+              class="text-xs bg-gray-50 rounded px-3 py-2 mb-2 flex flex-col gap-1"
+            >
+              <span class="text-gray-500 font-medium"
+                >Path excludes active for this package ({{ currentExcludes.length }}):</span
+              >
+              <div
+                v-for="exc in currentExcludes"
+                :key="exc.pattern"
+                class="flex items-center gap-2"
+              >
+                <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
+                <span class="text-gray-500">{{ exc.reason }}</span>
+                <AppButton
+                  variant="danger"
+                  class="ml-auto"
+                  @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
                   >✕</AppButton
                 >
               </div>
             </div>
-          </template>
-          <template v-else>
-            <div class="flex items-center gap-2">
-              <AppButton
-                v-if="currentPackage.declared_licenses_processed.spdx_expression"
-                variant="primary"
-                @click="openTrustForm"
-              >
-                Trust declared license
-              </AppButton>
-              <AppButton @click="openCurationForm">Conclude license</AppButton>
+            <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
+              No findings need review.
             </div>
-          </template>
-          </div>
-          <div v-if="allFindings.length" class="px-4 py-3 flex flex-col gap-2">
-          <div
-            v-if="vcsSiblings.length"
-            class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
-          >
-            This package originates from the same source repository as other packages in your
-            dependencies. Thus the license findings also apply to those packages:
-            <span v-for="(sibling, i) in vcsSiblings" :key="sibling" class="font-mono"
-              >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
-            >.
-          </div>
-          <div
-            v-if="currentExcludes.length"
-            class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
-          >
-            <span class="text-gray-500 font-medium"
-              >Path excludes active for this package ({{ currentExcludes.length }}):</span
-            >
-            <div v-for="exc in currentExcludes" :key="exc.pattern" class="flex items-center gap-2">
-              <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
-              <span class="text-gray-500">{{ exc.reason }}</span>
-              <AppButton
-                variant="danger"
-                class="ml-auto"
-                @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
-                >✕</AppButton
-              >
-            </div>
-          </div>
-          <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
-            No findings need review.
-          </div>
-          <template v-else-if="currentFinding">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-medium">
-                Finding {{ findingIndex + 1 }} of {{ totalFindings
-                }}<span
-                  v-if="showExcludeForm && previewExcludeCount(excludeFormPattern) > 0"
-                  class="text-gray-400 ml-1"
-                  >−{{ previewExcludeCount(excludeFormPattern) }}</span
+            <template v-else-if="currentFinding">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium">
+                  Finding {{ findingIndex + 1 }} of {{ totalFindings
+                  }}<span
+                    v-if="showExcludeForm && previewExcludeCount(excludeFormPattern) > 0"
+                    class="text-gray-400 ml-1"
+                    >−{{ previewExcludeCount(excludeFormPattern) }}</span
+                  >
+                </h3>
+                <div class="flex gap-2">
+                  <AppButton :disabled="findingIndex === 0" @click="findingIndex--"
+                    >← Prev</AppButton
+                  >
+                  <AppButton :disabled="findingIndex >= totalFindings - 1" @click="findingIndex++"
+                    >Next →</AppButton
+                  >
+                </div>
+              </div>
+              <div class="border rounded">
+                <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
+                  <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
+                  <span class="text-gray-500"
+                    >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
+                      currentFinding.location.end_line
+                    }}</span
+                  >
+                  <AppButton v-if="!showExcludeForm" @click="openExcludeForm"
+                    >Exclude path</AppButton
+                  >
+                  <template v-if="!showDecisionForm">
+                    <AppButton
+                      variant="primary"
+                      @click="openDecisionForm(suggestedConcludeLicense)"
+                    >
+                      Conclude as {{ suggestedConcludeLicense }}
+                    </AppButton>
+                    <AppButton @click="openDecisionForm()">Other…</AppButton>
+                  </template>
+                </div>
+                <div
+                  v-if="showDecisionForm"
+                  class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
                 >
-              </h3>
-              <div class="flex gap-2">
-                <AppButton :disabled="findingIndex === 0" @click="findingIndex--">← Prev</AppButton>
-                <AppButton :disabled="findingIndex >= totalFindings - 1" @click="findingIndex++"
-                  >Next →</AppButton
+                  <AppInput
+                    v-model="decisionLicense"
+                    placeholder="SPDX expression or NONE"
+                    class="font-mono flex-1 min-w-0"
+                  />
+                  <DescribedSelect
+                    v-model="decisionReason"
+                    :options="LICENSE_FINDING_CURATIONS_REASONS"
+                  />
+                  <AppInput
+                    v-model="decisionComment"
+                    placeholder="Comment (optional)"
+                    class="flex-1 min-w-0"
+                  />
+                  <AppButton @click="confirmDecisionForm">Conclude</AppButton>
+                  <AppButton variant="text" @click="showDecisionForm = false">Cancel</AppButton>
+                </div>
+                <div
+                  v-if="showExcludeForm"
+                  class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
                 >
-              </div>
-            </div>
-            <div class="border rounded">
-              <div class="flex items-center gap-3 px-3 py-2 text-sm border-b">
-                <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
-                <span class="text-gray-500"
-                  >{{ currentFinding.location.path }}:{{ currentFinding.location.start_line }}–{{
-                    currentFinding.location.end_line
-                  }}</span
+                  <DescribedSelect
+                    v-model="excludeFormPattern"
+                    :options="pathExcludeOptions(currentFinding.location.path)"
+                  />
+                  <DescribedSelect v-model="excludeFormReason" :options="PATH_EXCLUDE_REASONS" />
+                  <AppInput
+                    v-model="excludeFormComment"
+                    placeholder="Comment (optional)"
+                    class="flex-1 min-w-0"
+                  />
+                  <AppButton @click="confirmExclude">Confirm</AppButton>
+                  <AppButton variant="text" @click="showExcludeForm = false">Cancel</AppButton>
+                </div>
+                <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
+                <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
+                  Could not load file.
+                </div>
+                <pre
+                  v-else
+                  class="overflow-x-auto text-xs"
+                ><button v-if="(fileContent[0]?.number ?? 0) > 1" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></button><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><button v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></button></pre>
+                <div
+                  v-if="siblingFindingsInFile.length"
+                  class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-t"
                 >
-                <AppButton v-if="!showExcludeForm" @click="openExcludeForm">Exclude path</AppButton>
-                <template v-if="!showDecisionForm">
-                  <AppButton variant="primary" @click="openDecisionForm(suggestedConcludeLicense)">
-                    Conclude as {{ suggestedConcludeLicense }}
-                  </AppButton>
-                  <AppButton @click="openDecisionForm()">Other…</AppButton>
-                </template>
+                  <span class="text-gray-900 text-xs">Other license findings in this file:</span>
+                  <LicensePill
+                    v-for="(f, i) in siblingFindingsInFile"
+                    :key="i"
+                    clickable
+                    :license="f.license"
+                    :score="f.score"
+                    :disabled="reviewFindings.indexOf(f) === -1"
+                    @click="findingIndex = reviewFindings.indexOf(f)"
+                  />
+                </div>
               </div>
-              <div
-                v-if="showDecisionForm"
-                class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
-              >
-                <AppInput
-                  v-model="decisionLicense"
-                  placeholder="SPDX expression or NONE"
-                  class="font-mono flex-1 min-w-0"
-                />
-                <DescribedSelect
-                  v-model="decisionReason"
-                  :options="LICENSE_FINDING_CURATIONS_REASONS"
-                />
-                <AppInput
-                  v-model="decisionComment"
-                  placeholder="Comment (optional)"
-                  class="flex-1 min-w-0"
-                />
-                <AppButton @click="confirmDecisionForm">Conclude</AppButton>
-                <AppButton variant="text" @click="showDecisionForm = false">Cancel</AppButton>
+              <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
+                Loading canonical text…
               </div>
-              <div
-                v-if="showExcludeForm"
-                class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
-              >
-                <DescribedSelect
-                  v-model="excludeFormPattern"
-                  :options="pathExcludeOptions(currentFinding.location.path)"
-                />
-                <DescribedSelect v-model="excludeFormReason" :options="PATH_EXCLUDE_REASONS" />
-                <AppInput
-                  v-model="excludeFormComment"
-                  placeholder="Comment (optional)"
-                  class="flex-1 min-w-0"
-                />
-                <AppButton @click="confirmExclude">Confirm</AppButton>
-                <AppButton variant="text" @click="showExcludeForm = false">Cancel</AppButton>
-              </div>
-              <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
-              <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
-                Could not load file.
-              </div>
-              <pre
-                v-else
-                class="overflow-x-auto text-xs"
-              ><button v-if="(fileContent[0]?.number ?? 0) > 1" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></button><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><button v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></button></pre>
-              <div
-                v-if="siblingFindingsInFile.length"
-                class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-t"
-              >
-                <span class="text-gray-900 text-xs">Other license findings in this file:</span>
-                <LicensePill
-                  v-for="(f, i) in siblingFindingsInFile"
-                  :key="i"
-                  clickable
-                  :license="f.license"
-                  :score="f.score"
-                  :disabled="reviewFindings.indexOf(f) === -1"
-                  @click="findingIndex = reviewFindings.indexOf(f)"
-                />
-              </div>
-            </div>
-            <div v-if="canonicalLoading" class="text-sm text-gray-400 mt-2">
-              Loading canonical text…
-            </div>
-            <div v-else-if="wordDiff" class="border rounded mt-2">
-              <div class="px-3 py-2 text-sm border-b text-gray-500">
-                Diff vs. canonical
-                <span class="font-mono">{{ currentFinding.license }}</span>
-              </div>
-              <pre
-                class="overflow-x-auto text-xs px-3 py-2"
-              ><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
+              <div v-else-if="wordDiff" class="bg-gray-50 rounded mt-2">
+                <div class="px-3 py-2 text-sm text-gray-500">
+                  Diff vs. canonical
+                  <span class="font-mono">{{ currentFinding.license }}</span>
+                </div>
+                <pre
+                  class="overflow-x-auto text-xs px-3 py-2"
+                ><template v-for="(change, i) in wordDiff" :key="i"><span :class="{
                 'bg-green-100 text-green-800': change.added,
                 'bg-red-100 text-red-700 line-through': change.removed,
               }">{{ change.value }}</span></template></pre>
-            </div>
-          </template>
-          <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
-            <div
-              v-for="[license, count] in hiddenByLicense"
-              :key="license"
-              class="text-sm text-gray-400"
-            >
-              {{ count }} finding{{ count === 1 ? '' : 's' }} of
-              <span class="font-mono">{{ license }}</span> with score 100 hidden
-              <button
-                v-if="!showHidden"
-                class="ml-1 underline text-gray-500"
-                @click="showHidden = true"
-              >
-                show
-              </button>
-            </div>
-            <div v-if="showHidden">
-              <button class="text-sm underline text-gray-500 mb-1" @click="showHidden = false">
-                hide
-              </button>
-              <div
-                v-for="f in hiddenFindings"
-                :key="`${f.location.path}:${f.location.start_line}`"
-                class="text-xs font-mono text-gray-500 px-1"
-              >
-                <span class="font-semibold">{{ f.license }}</span>
-                {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
-                <span class="text-gray-400">score {{ f.score }}</span>
               </div>
-            </div>
-          </div>
-          <div v-if="reviewedFindings.length" class="mt-3 flex flex-col gap-1">
-            <div class="text-sm text-gray-400">
-              {{ reviewedFindings.length }} finding{{ reviewedFindings.length === 1 ? '' : 's' }}
-              marked as reviewed
-              <button
-                v-if="!showReviewed"
-                class="ml-1 underline text-gray-500"
-                @click="showReviewed = true"
-              >
-                show
-              </button>
-            </div>
-            <div v-if="showReviewed">
-              <button class="text-sm underline text-gray-500 mb-1" @click="showReviewed = false">
-                hide
-              </button>
+            </template>
+            <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
               <div
-                v-for="f in reviewedFindings"
-                :key="findingCurationKey(f)"
-                class="text-xs font-mono text-gray-500 px-1 flex items-center gap-2"
+                v-for="[license, count] in hiddenByLicense"
+                :key="license"
+                class="text-sm text-gray-400"
               >
-                <span class="font-semibold">{{ f.license }}</span>
-                {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
-                <span class="text-green-700">
-                  →
-                  {{
-                    currentFindingCurationsMap.get(findingCurationKey(f))?.concluded_license ?? '?'
-                  }}
-                </span>
-                <span
-                  v-if="currentFindingCurationsMap.get(findingCurationKey(f))?.comment"
-                  class="text-gray-400"
-                  >{{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}</span
+                {{ count }} finding{{ count === 1 ? '' : 's' }} of
+                <span class="font-mono">{{ license }}</span> with score 100 hidden
+                <button
+                  v-if="!showHidden"
+                  class="ml-1 underline text-gray-500"
+                  @click="showHidden = true"
                 >
-                <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
+                  show
+                </button>
+              </div>
+              <div v-if="showHidden">
+                <button class="text-sm underline text-gray-500 mb-1" @click="showHidden = false">
+                  hide
+                </button>
+                <div
+                  v-for="f in hiddenFindings"
+                  :key="`${f.location.path}:${f.location.start_line}`"
+                  class="text-xs font-mono text-gray-500 px-1"
+                >
+                  <span class="font-semibold">{{ f.license }}</span>
+                  {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+                  <span class="text-gray-400">score {{ f.score }}</span>
+                </div>
               </div>
             </div>
-          </div>
+            <div v-if="reviewedFindings.length" class="mt-3 flex flex-col gap-1">
+              <div class="text-sm text-gray-400">
+                {{ reviewedFindings.length }} finding{{ reviewedFindings.length === 1 ? '' : 's' }}
+                marked as reviewed
+                <button
+                  v-if="!showReviewed"
+                  class="ml-1 underline text-gray-500"
+                  @click="showReviewed = true"
+                >
+                  show
+                </button>
+              </div>
+              <div v-if="showReviewed">
+                <button class="text-sm underline text-gray-500 mb-1" @click="showReviewed = false">
+                  hide
+                </button>
+                <div
+                  v-for="f in reviewedFindings"
+                  :key="findingCurationKey(f)"
+                  class="text-xs font-mono text-gray-500 px-1 flex items-center gap-2"
+                >
+                  <span class="font-semibold">{{ f.license }}</span>
+                  {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+                  <span class="text-green-700">
+                    →
+                    {{
+                      currentFindingCurationsMap.get(findingCurationKey(f))?.concluded_license ??
+                      '?'
+                    }}
+                  </span>
+                  <span
+                    v-if="currentFindingCurationsMap.get(findingCurationKey(f))?.comment"
+                    class="text-gray-400"
+                    >{{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}</span
+                  >
+                  <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
+                </div>
+              </div>
+            </div>
           </div>
         </AppPanel>
       </template>

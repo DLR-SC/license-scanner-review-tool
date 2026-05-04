@@ -6,7 +6,7 @@ defineProps<{
 
 <template>
   <div class="border rounded flex flex-col">
-    <div class="px-4 py-3 border-b">
+    <div class="px-4 py-3 bg-gray-100 rounded-t">
       <h2 class="text-base font-semibold">{{ title }}</h2>
     </div>
     <slot />
