@@ -251,8 +251,8 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col border-l bg-white shrink-0 relative" style="width: 300px">
-    <div ref="container" class="w-full h-full" />
+  <div class="flex flex-col flex-1 relative" style="width: 300px">
+    <div ref="container" class="w-full flex-1" />
     <div
       v-if="tooltip.visible"
       ref="tooltipEl"

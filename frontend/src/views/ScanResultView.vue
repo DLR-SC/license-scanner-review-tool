@@ -12,6 +12,7 @@ import InfoTooltip from '@/components/InfoTooltip.vue'
 import AppInput from '@/components/AppInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
+import AppPanel from '@/components/AppPanel.vue'
 import LicensePill from '@/components/LicensePill.vue'
 import { useRoute } from 'vue-router'
 import { diffWords } from 'diff'
@@ -622,8 +623,10 @@ watch(
           </template>
         </nav>
 
-        <div class="flex gap-4 mb-6">
-          <table v-if="currentPackage" class="border-collapse text-sm flex-1 min-w-0 self-start">
+        <div class="flex gap-4 mb-4">
+          <AppPanel title="Package metadata" class="flex-1 min-w-0">
+          <div class="p-3">
+            <table v-if="currentPackage" class="border-collapse text-sm w-full">
             <tbody>
               <tr>
                 <th class="border px-3 py-1.5 text-left w-40">ID</th>
@@ -748,12 +751,17 @@ watch(
                 </td>
               </tr>
             </tbody>
-          </table>
-          <DependencyGraph :current-package-id="currentPackage!.id" class="shrink-0" />
+            </table>
+          </div>
+          </AppPanel>
+          <AppPanel title="Dependency Graph" class="shrink-0">
+            <DependencyGraph :current-package-id="currentPackage!.id" />
+          </AppPanel>
         </div>
 
-        <!-- Conclude license panel -->
-        <div class="mt-4 border rounded px-4 py-3">
+        <!-- Review panel -->
+        <AppPanel title="License review" class="mt-4">
+          <div class="px-4 py-3" :class="{ 'border-b': allFindings.length }">
           <template v-if="showCurationForm">
             <div class="flex flex-wrap gap-2 items-center">
               <AppInput v-model="curationLicense" placeholder="SPDX expression" class="font-mono" />
@@ -793,9 +801,8 @@ watch(
               <AppButton @click="openCurationForm">Conclude license</AppButton>
             </div>
           </template>
-        </div>
-
-        <section v-if="allFindings.length" class="mt-4 flex flex-col gap-2">
+          </div>
+          <div v-if="allFindings.length" class="px-4 py-3 flex flex-col gap-2">
           <div
             v-if="vcsSiblings.length"
             class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
@@ -806,7 +813,6 @@ watch(
               >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
             >.
           </div>
-          <h2 class="text-base font-semibold">License findings</h2>
           <div
             v-if="currentExcludes.length"
             class="text-xs border rounded px-3 py-2 mb-2 flex flex-col gap-1"
@@ -1008,7 +1014,8 @@ watch(
               </div>
             </div>
           </div>
-        </section>
+          </div>
+        </AppPanel>
       </template>
     </template>
   </main>
