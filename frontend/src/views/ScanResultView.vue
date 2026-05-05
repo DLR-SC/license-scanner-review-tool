@@ -889,38 +889,6 @@ watch(
               :key="currentPackage?.id"
               class="flex flex-col gap-2"
             >
-              <CollapsiblePanel v-if="currentExcludes.length">
-                <template #summary>
-                  <span class="text-gray-600"
-                    >{{ currentExcludes.length }} path exclude{{
-                      currentExcludes.length === 1 ? '' : 's'
-                    }}</span
-                  >
-                </template>
-                <table class="w-full text-sm">
-                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
-                    <tr>
-                      <th class="px-3 py-1.5 text-left font-medium">Path Pattern</th>
-                      <th class="px-3 py-1.5 text-left font-medium">Reason</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-100">
-                    <tr v-for="exc in currentExcludes" :key="exc.pattern">
-                      <td class="px-3 py-2 font-mono text-gray-700">{{ exc.pattern }}</td>
-                      <td class="px-3 py-2 text-gray-400">{{ exc.reason }}</td>
-                      <td class="px-3 py-2 text-right">
-                        <AppButton
-                          variant="danger"
-                          @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
-                          >✕</AppButton
-                        >
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </CollapsiblePanel>
-
               <CollapsiblePanel v-if="hiddenByLicense.size">
                 <template #summary>
                   <span class="text-gray-600"
@@ -1006,6 +974,38 @@ watch(
                       </td>
                       <td class="px-3 py-2 text-right">
                         <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CollapsiblePanel>
+
+              <CollapsiblePanel v-if="currentExcludes.length">
+                <template #summary>
+                  <span class="text-gray-600"
+                    >{{ currentExcludes.length }} path exclude{{
+                      currentExcludes.length === 1 ? '' : 's'
+                    }}</span
+                  >
+                </template>
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                    <tr>
+                      <th class="px-3 py-1.5 text-left font-medium">Path Pattern</th>
+                      <th class="px-3 py-1.5 text-left font-medium">Reason</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <tr v-for="exc in currentExcludes" :key="exc.pattern">
+                      <td class="px-3 py-2 font-mono text-gray-700">{{ exc.pattern }}</td>
+                      <td class="px-3 py-2 text-gray-400">{{ exc.reason }}</td>
+                      <td class="px-3 py-2 text-right">
+                        <AppButton
+                          variant="danger"
+                          @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
+                          >✕</AppButton
+                        >
                       </td>
                     </tr>
                   </tbody>
