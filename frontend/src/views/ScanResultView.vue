@@ -803,11 +803,17 @@ watch(
         >
           <div class="flex flex-col gap-2 px-4 py-3">
             <template v-if="showCurationForm">
-              <div class="flex flex-wrap gap-2 items-center">
-                <SpdxInput v-model="curationLicense" placeholder="SPDX expression" />
+              <div class="flex flex-wrap gap-2 items-end">
+                <SpdxInput
+                  v-model="curationLicense"
+                  label="License"
+                  placeholder="SPDX expression"
+                  class="flex-1 min-w-0"
+                />
                 <AppInput
                   v-model="curationComment"
-                  placeholder="Comment (optional)"
+                  label="Comment"
+                  placeholder="Optional"
                   class="flex-1 min-w-0"
                 />
                 <AppButton @click="confirmCuration">Confirm</AppButton>
@@ -841,18 +847,16 @@ watch(
                 <AppButton @click="openCurationForm">Conclude license</AppButton>
               </div>
             </template>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 shrink-0"
-                >Suggested declared license
-                <InfoTooltip
-                  text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
-              /></span>
-              <SpdxInput
-                v-model="suggestedDeclaredLicense"
-                placeholder="SPDX expression"
-                class="w-2xl"
+            <SpdxInput
+              v-model="suggestedDeclaredLicense"
+              label="Suggested declared license"
+              placeholder="SPDX expression"
+              class="w-2xl"
+            >
+              <InfoTooltip
+                text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
               />
-            </div>
+            </SpdxInput>
             <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
               <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
                 Included licenses after review
@@ -946,10 +950,11 @@ watch(
                 </template>
                 <div
                   v-if="showDecisionForm"
-                  class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
+                  class="flex flex-wrap items-end gap-2 px-3 py-2 text-sm border-b bg-gray-50"
                 >
                   <SpdxInput
                     v-model="decisionLicense"
+                    label="License"
                     placeholder="SPDX expression or NONE"
                     class="flex-1 min-w-0"
                     allow-none
@@ -957,10 +962,12 @@ watch(
                   <DescribedSelect
                     v-model="decisionReason"
                     :options="LICENSE_FINDING_CURATIONS_REASONS"
+                    label="Reason"
                   />
                   <AppInput
                     v-model="decisionComment"
-                    placeholder="Comment (optional)"
+                    label="Comment"
+                    placeholder="Optional"
                     class="flex-1 min-w-0"
                   />
                   <AppButton @click="confirmDecisionForm">Conclude</AppButton>
@@ -968,16 +975,22 @@ watch(
                 </div>
                 <div
                   v-if="showExcludeForm"
-                  class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
+                  class="flex flex-wrap items-end gap-2 px-3 py-2 text-sm border-b bg-gray-50"
                 >
                   <DescribedSelect
                     v-model="excludeFormPattern"
                     :options="pathExcludeOptions(currentFinding.location.path)"
+                    label="Path pattern"
                   />
-                  <DescribedSelect v-model="excludeFormReason" :options="PATH_EXCLUDE_REASONS" />
+                  <DescribedSelect
+                    v-model="excludeFormReason"
+                    :options="PATH_EXCLUDE_REASONS"
+                    label="Reason"
+                  />
                   <AppInput
                     v-model="excludeFormComment"
-                    placeholder="Comment (optional)"
+                    label="Comment"
+                    placeholder="Optional"
                     class="flex-1 min-w-0"
                   />
                   <AppButton @click="confirmExclude">Confirm</AppButton>
