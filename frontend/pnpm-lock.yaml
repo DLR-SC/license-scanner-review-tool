@@ -48,9 +48,6 @@ importers:
       '@tsconfig/node24':
         specifier: ^24.0.4
         version: 24.0.4
-      '@types/cytoscape':
-        specifier: ^3.31.0
-        version: 3.31.0
       '@types/cytoscape-dagre':
         specifier: ^2.3.4
         version: 2.3.4
@@ -945,10 +942,6 @@ packages:
 
   '@types/cytoscape-dagre@2.3.4':
     resolution: {integrity: sha512-uOGXuPfPLFoKZaegjHl9oj4tqONNJuhUl180FiJgRZ35rVijBs6J4UP1Ah6mA6S46h+7pv4ICqpgfdC3EADZlw==}
-
-  '@types/cytoscape@3.31.0':
-    resolution: {integrity: sha512-EXHOHxqQjGxLDEh5cP4te6J0bi7LbCzmZkzsR6f703igUac8UGMdEohMyU3GHAayCTZrLQOMnaE/lqB2Ekh8Ww==}
-    deprecated: This is a stub types definition. cytoscape provides its own type definitions, so you do not need this installed.
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -3230,10 +3223,6 @@ snapshots:
   '@tsconfig/node24@24.0.4': {}
 
   '@types/cytoscape-dagre@2.3.4':
-    dependencies:
-      cytoscape: 3.33.2
-
-  '@types/cytoscape@3.31.0':
     dependencies:
       cytoscape: 3.33.2
 

@@ -32,7 +32,6 @@
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@tsconfig/node24": "^24.0.4",
-    "@types/cytoscape": "^3.31.0",
     "@types/cytoscape-dagre": "^2.3.4",
     "@types/node": "^24.11.0",
     "@types/spdx-expression-parse": "^4.0.0",
