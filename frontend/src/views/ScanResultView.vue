@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, onMounted, useTemplateRef } from 'vue'
 import CarbonCheckmarkFilled from '~icons/carbon/checkmark-filled'
 import AppButton from '@/components/AppButton.vue'
+import CollapsiblePanel from '@/components/CollapsiblePanel.vue'
 import InfoTooltip from '@/components/InfoTooltip.vue'
 import AppInput from '@/components/AppInput.vue'
 import SpdxInput from '@/components/SpdxInput.vue'
@@ -255,6 +256,14 @@ const reviewedFindings = computed(() =>
   allFindings.value.filter((f) => currentFindingCurationsMap.value.has(findingCurationKey(f))),
 )
 
+const reviewedByLicense = computed(() => {
+  const map = new Map<string, number>()
+  for (const f of reviewedFindings.value) {
+    map.set(f.license, (map.get(f.license) ?? 0) + 1)
+  }
+  return map
+})
+
 function previewExcludeCount(pattern: string): number {
   return reviewFindings.value.filter((f) => minimatch(f.location.path, pattern)).length
 }
@@ -290,8 +299,6 @@ const siblingFindingsInFile = computed(() => {
   )
 })
 
-const showHidden = ref(false)
-
 const showExcludeForm = ref(false)
 const excludeFormPattern = ref('')
 const excludeFormReason = ref<Option['label']>('BUILD_TOOL_OF')
@@ -323,8 +330,6 @@ const showDecisionForm = ref(false)
 const decisionLicense = ref('')
 const decisionComment = ref('')
 const decisionReason = ref<Option['label']>('CODE')
-
-const showReviewed = ref(false)
 
 function openTrustForm() {
   curationLicense.value = currentPackage.value?.declaredLicensesProcessed?.spdxExpression ?? ''
@@ -517,11 +522,9 @@ watch(currentPackage, (pkg) => {
   contextAbove.value = 5
   contextBelow.value = 5
   fileTotalLines.value = 0
-  showHidden.value = false
   showExcludeForm.value = false
   showCurationForm.value = false
   showDecisionForm.value = false
-  showReviewed.value = false
   suggestedDeclaredLicense.value = ''
   if (pkg) {
     store.fetchPathExcludes(pkg.id)
@@ -882,26 +885,129 @@ watch(
               >.
             </div>
             <div
-              v-if="currentExcludes.length"
-              class="text-xs bg-gray-50 rounded px-3 py-2 mb-2 flex flex-col gap-1"
+              v-if="currentExcludes.length || hiddenByLicense.size || reviewedFindings.length"
+              :key="currentPackage?.id"
+              class="flex flex-col gap-2"
             >
-              <span class="text-gray-500 font-medium"
-                >Path excludes active for this package ({{ currentExcludes.length }}):</span
-              >
-              <div
-                v-for="exc in currentExcludes"
-                :key="exc.pattern"
-                class="flex items-center gap-2"
-              >
-                <span class="font-mono text-gray-700">[{{ exc.pattern }}]</span>
-                <span class="text-gray-500">{{ exc.reason }}</span>
-                <AppButton
-                  variant="danger"
-                  class="ml-auto"
-                  @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
-                  >✕</AppButton
-                >
-              </div>
+              <CollapsiblePanel v-if="currentExcludes.length">
+                <template #summary>
+                  <span class="text-gray-600"
+                    >{{ currentExcludes.length }} path exclude{{
+                      currentExcludes.length === 1 ? '' : 's'
+                    }}</span
+                  >
+                </template>
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                    <tr>
+                      <th class="px-3 py-1.5 text-left font-medium">Path Pattern</th>
+                      <th class="px-3 py-1.5 text-left font-medium">Reason</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <tr v-for="exc in currentExcludes" :key="exc.pattern">
+                      <td class="px-3 py-2 font-mono text-gray-700">{{ exc.pattern }}</td>
+                      <td class="px-3 py-2 text-gray-400">{{ exc.reason }}</td>
+                      <td class="px-3 py-2 text-right">
+                        <AppButton
+                          variant="danger"
+                          @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
+                          >✕</AppButton
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CollapsiblePanel>
+
+              <CollapsiblePanel v-if="hiddenByLicense.size">
+                <template #summary>
+                  <span class="text-gray-600"
+                    >{{ hiddenFindings.length }} hidden finding{{
+                      hiddenFindings.length === 1 ? '' : 's'
+                    }}<span class="text-gray-400">
+                      ·
+                      {{
+                        Array.from(hiddenByLicense)
+                          .map(([l, c]) => `${l} (${c})`)
+                          .join(', ')
+                      }}
+                    </span></span
+                  >
+                </template>
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                    <tr>
+                      <th class="px-3 py-1.5 text-left font-medium">License finding</th>
+                      <th class="px-3 py-1.5 text-left font-medium">Location</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <tr
+                      v-for="f in hiddenFindings"
+                      :key="`${f.location.path}:${f.location.startLine}`"
+                    >
+                      <td class="px-3 py-2">
+                        <LicensePill :license="f.license" :score="f.score" />
+                      </td>
+                      <td class="px-3 py-2 font-mono text-gray-500">
+                        {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CollapsiblePanel>
+
+              <CollapsiblePanel v-if="reviewedFindings.length">
+                <template #summary>
+                  <span class="text-gray-600"
+                    >{{ reviewedFindings.length }} reviewed finding{{
+                      reviewedFindings.length === 1 ? '' : 's'
+                    }}<span class="text-gray-400">
+                      ·
+                      {{
+                        Array.from(reviewedByLicense)
+                          .map(([l, c]) => `${l} (${c})`)
+                          .join(', ')
+                      }}
+                    </span></span
+                  >
+                </template>
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                    <tr>
+                      <th class="px-3 py-1.5 text-left font-medium">License finding</th>
+                      <th class="px-3 py-1.5 text-left font-medium">Location</th>
+                      <th class="px-3 py-1.5 text-left font-medium">Concluded license</th>
+                      <th class="px-3 py-1.5 text-left font-medium">Comment</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <tr v-for="f in reviewedFindings" :key="findingCurationKey(f)">
+                      <td class="px-3 py-2">
+                        <LicensePill :license="f.license" :score="f.score" />
+                      </td>
+                      <td class="px-3 py-2 font-mono text-gray-500">
+                        {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
+                      </td>
+                      <td class="px-3 py-2 text-green-700">
+                        {{
+                          currentFindingCurationsMap.get(findingCurationKey(f))?.concludedLicense ??
+                          '?'
+                        }}
+                      </td>
+                      <td class="px-3 py-2 text-gray-400">
+                        {{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}
+                      </td>
+                      <td class="px-3 py-2 text-right">
+                        <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CollapsiblePanel>
             </div>
             <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
               No findings need review.
@@ -1046,75 +1152,6 @@ watch(
               }">{{ change.value }}</span></template></pre>
               </AppCard>
             </template>
-            <div v-if="hiddenByLicense.size" class="mt-3 flex flex-col gap-1">
-              <div
-                v-for="[license, count] in hiddenByLicense"
-                :key="license"
-                class="text-sm text-gray-400"
-              >
-                {{ count }} finding{{ count === 1 ? '' : 's' }} of
-                <span class="font-mono">{{ license }}</span> with score 100 hidden
-                <button
-                  v-if="!showHidden"
-                  class="ml-1 underline text-gray-500"
-                  @click="showHidden = true"
-                >
-                  show
-                </button>
-              </div>
-              <div v-if="showHidden">
-                <button class="text-sm underline text-gray-500 mb-1" @click="showHidden = false">
-                  hide
-                </button>
-                <div
-                  v-for="f in hiddenFindings"
-                  :key="`${f.location.path}:${f.location.startLine}`"
-                  class="text-xs font-mono text-gray-500 px-1"
-                >
-                  <span class="font-semibold">{{ f.license }}</span>
-                  {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
-                  <span class="text-gray-400">score {{ f.score }}</span>
-                </div>
-              </div>
-            </div>
-            <div v-if="reviewedFindings.length" class="mt-3 flex flex-col gap-1">
-              <div class="text-sm text-gray-400">
-                {{ reviewedFindings.length }} finding{{ reviewedFindings.length === 1 ? '' : 's' }}
-                marked as reviewed
-                <button
-                  v-if="!showReviewed"
-                  class="ml-1 underline text-gray-500"
-                  @click="showReviewed = true"
-                >
-                  show
-                </button>
-              </div>
-              <div v-if="showReviewed">
-                <button class="text-sm underline text-gray-500 mb-1" @click="showReviewed = false">
-                  hide
-                </button>
-                <div
-                  v-for="f in reviewedFindings"
-                  :key="findingCurationKey(f)"
-                  class="text-xs font-mono text-gray-500 px-1 flex items-center gap-2"
-                >
-                  <span class="font-semibold">{{ f.license }}</span>
-                  {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
-                  <span class="text-green-700">
-                    →
-                    {{
-                      currentFindingCurationsMap.get(findingCurationKey(f))?.concludedLicense ?? '?'
-                    }}
-                  </span>
-                  <span
-                    v-if="currentFindingCurationsMap.get(findingCurationKey(f))?.comment"
-                    class="text-gray-400"
-                    >{{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}</span
-                  >
-                  <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
-                </div>
-              </div>
-            </div>
           </div>
         </AppPanel>
       </template>
