@@ -370,6 +370,20 @@ async function confirmDecisionForm() {
   showDecisionForm.value = false
 }
 
+const includedLicenses = computed<string[]>(() => {
+  const licenses = new Set<string>()
+  const declared = currentPackage.value?.declaredLicensesProcessed?.spdxExpression
+  if (declared) licenses.add(declared)
+  for (const c of currentFindingCurations.value) {
+    if (c.concludedLicense) licenses.add(c.concludedLicense)
+  }
+  for (const dep of currentDeps.value) {
+    const concluded = store.curations[dep.id]?.concludedLicense
+    if (concluded) licenses.add(concluded)
+  }
+  return [...licenses].filter((l) => l !== 'NONE').sort() // NONE means "no license found" for license findings
+})
+
 const suggestedConcludeLicense = computed(() =>
   // concluding to NOASSERTION is not very useful, so suggest NONE instead since often NOASSERTION is detected when no license text is found at all
   currentFinding.value?.license === 'NOASSERTION' ? 'NONE' : (currentFinding.value?.license ?? ''),
@@ -766,7 +780,7 @@ watch(
           tooltip="Review the license findings and the dependencies before concluding the license for this package. Or trust the declared license if you are confident it's correct. For each finding you can view the detected license text in context, compare it to a canonical version of the license, and then decide to exclude the file from the scan results or to conclude a specific license for the finding."
           class="mt-4"
         >
-          <div class="px-4 py-3">
+          <div class="flex flex-col gap-2 px-4 py-3">
             <template v-if="showCurationForm">
               <div class="flex flex-wrap gap-2 items-center">
                 <AppInput
@@ -810,6 +824,15 @@ watch(
                 <AppButton @click="openCurationForm">Conclude license</AppButton>
               </div>
             </template>
+            <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
+              <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
+                Included licenses after review
+                <InfoTooltip
+                  text="Use this as a guide when concluding the overall license for this package. The list includes the declared license, any licenses concluded for individual findings, and the concluded licenses of all direct dependencies."
+                />
+              </span>
+              <LicensePill v-for="license in includedLicenses" :key="license" :license="license" />
+            </div>
           </div>
           <div
             v-if="allFindings.length"

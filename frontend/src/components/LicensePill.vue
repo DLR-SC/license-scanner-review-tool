@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 defineProps<{
   license: string
-  score: number
+  score?: number
   clickable?: boolean
   disabled?: boolean
 }>()
@@ -32,6 +32,6 @@ defineEmits<{
     @click="clickable && !disabled && $emit('click')"
   >
     <span class="bg-gray-100 text-gray-800 px-2 py-0.5">{{ license }}</span>
-    <span class="bg-gray-200 text-gray-600 px-2 py-0.5">{{ score }}</span>
+    <span v-if="score !== undefined" class="bg-gray-200 text-gray-600 px-2 py-0.5">{{ score }}</span>
   </component>
 </template>
