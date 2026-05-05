@@ -38,6 +38,7 @@ frontend:generate:
     - job: frontend:export-schema
       artifacts: true
   script:
+    - apt-get update -qq && apt-get install -y -qq default-jre-headless
     - pnpm run generate
   artifacts:
     paths:
