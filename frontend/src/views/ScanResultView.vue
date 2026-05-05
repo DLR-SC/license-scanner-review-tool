@@ -10,6 +10,7 @@ import CarbonCheckmarkFilled from '~icons/carbon/checkmark-filled'
 import AppButton from '@/components/AppButton.vue'
 import InfoTooltip from '@/components/InfoTooltip.vue'
 import AppInput from '@/components/AppInput.vue'
+import SpdxInput from '@/components/SpdxInput.vue'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
 import AppPanel from '@/components/AppPanel.vue'
@@ -802,11 +803,7 @@ watch(
           <div class="flex flex-col gap-2 px-4 py-3">
             <template v-if="showCurationForm">
               <div class="flex flex-wrap gap-2 items-center">
-                <AppInput
-                  v-model="curationLicense"
-                  placeholder="SPDX expression"
-                  class="font-mono"
-                />
+                <SpdxInput v-model="curationLicense" placeholder="SPDX expression" />
                 <AppInput
                   v-model="curationComment"
                   placeholder="Comment (optional)"
@@ -849,10 +846,10 @@ watch(
                 <InfoTooltip
                   text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
               /></span>
-              <AppInput
+              <SpdxInput
                 v-model="suggestedDeclaredLicense"
                 placeholder="SPDX expression"
-                class="font-mono w-2xl"
+                class="w-2xl"
               />
             </div>
             <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
@@ -950,10 +947,11 @@ watch(
                   v-if="showDecisionForm"
                   class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm border-b bg-gray-50"
                 >
-                  <AppInput
+                  <SpdxInput
                     v-model="decisionLicense"
                     placeholder="SPDX expression or NONE"
-                    class="font-mono flex-1 min-w-0"
+                    class="flex-1 min-w-0"
+                    allow-none
                   />
                   <DescribedSelect
                     v-model="decisionReason"
