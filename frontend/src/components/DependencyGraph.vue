@@ -124,9 +124,9 @@ function buildElements(): cytoscape.ElementDefinition[] {
       classes: 'project',
     })
     const rootPkgIds = new Set<string>()
-    for (const scopeEntries of Object.values(graph.scopes)) {
+    for (const scopeEntries of Object.values(graph.scopes ?? {})) {
       for (const entry of scopeEntries) {
-        const pkgId = graph.packages[entry.root]
+        const pkgId = (graph.packages ?? [])[entry.root]
         if (pkgId && packageIds.has(pkgId)) rootPkgIds.add(pkgId)
       }
     }
@@ -157,7 +157,7 @@ function applyClasses() {
     const id = node.data('id') as string
     node.removeClass('current concluded')
     if (id === props.currentPackageId) node.addClass('current')
-    if (store.curations[id]?.concluded_license) node.addClass('concluded')
+    if (store.curations[id]?.concludedLicense) node.addClass('concluded')
   })
 }
 

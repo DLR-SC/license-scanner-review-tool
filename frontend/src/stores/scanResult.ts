@@ -4,121 +4,29 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type {
+  Repository,
+  Project,
+  Package,
+  PackageScanResult,
+  PathExclude,
+  PackageCuration,
+  LicenseFinding,
+  LicenseFindingCuration,
+  DependencyGraph,
+} from '../client'
+import { api } from '../api'
 
-export interface VcsInfo {
-  type: string
-  url: string
-  revision: string
-  path: string
-}
-
-export interface DeclaredLicensesProcessed {
-  spdx_expression: string
-}
-
-export interface Repository {
-  vcs: VcsInfo
-  vcs_processed: VcsInfo
-}
-
-export interface Project {
-  id: string
-  definition_file_path: string
-  declared_licenses: string[]
-  declared_licenses_processed: DeclaredLicensesProcessed
-  scope_names: string[]
-  homepage_url: string
-}
-
-export interface Package {
-  id: string
-  purl: string
-  authors: string[]
-  declared_licenses: string[]
-  declared_licenses_processed: DeclaredLicensesProcessed
-  description: string
-  homepage_url: string
-  vcs_url: string
-  vcs_siblings: string[]
-}
-
-export interface OrtGraphNode {
-  pkg?: number
-  fragment?: number
-}
-
-export interface OrtGraphEdge {
-  from: number
-  to: number
-}
-
-export interface OrtGraphScopeEntry {
-  root: number
-  fragment?: number
-}
-
-export interface OrtDependencyGraph {
-  packages: string[]
-  nodes: OrtGraphNode[]
-  edges: OrtGraphEdge[]
-  scopes: Record<string, OrtGraphScopeEntry[]>
-}
-
-export type OrtDependencyGraphs = Record<string, OrtDependencyGraph>
-
-export interface LicenseLocation {
-  path: string
-  start_line: number
-  end_line: number
-}
-
-export interface LicenseFinding {
-  license: string
-  location: LicenseLocation
-  score: number
-}
-
-export interface PackageScanResult {
-  package_id: string
-  provenance: {
-    vcs_info: VcsInfo
-    resolved_revision: string
-  }
-  licenses: LicenseFinding[]
-}
-
-export interface PathExclude {
-  pattern: string
-  reason: string
-  comment: string
-}
-
-export interface PackagePathExcludes {
-  package_id: string
-  path_excludes: PathExclude[]
-}
-
-export interface PackageCuration {
-  package_id: string
-  comment: string
-  concluded_license: string | null
-}
-
-export interface LicenseFindingCuration {
-  path: string
-  start_lines: string
-  line_count: number
-  detected_license: string
-  reason: string
-  comment: string
-  concluded_license: string
-}
-
-export interface OrtResult {
-  repository: Repository
-  projects: Project[]
-  packages: Package[]
-  scan_results: PackageScanResult[]
+export type {
+  Repository,
+  Project,
+  Package,
+  PackageScanResult,
+  PathExclude,
+  PackageCuration,
+  LicenseFinding,
+  LicenseFindingCuration,
+  DependencyGraph,
 }
 
 export const useScanResultStore = defineStore('scanResult', () => {
@@ -131,16 +39,15 @@ export const useScanResultStore = defineStore('scanResult', () => {
   const pathExcludes = ref<Record<string, PathExclude[]>>({})
   const curations = ref<Record<string, PackageCuration>>({})
   const findingCurations = ref<Record<string, LicenseFindingCuration[]>>({})
-  const dependencyGraph = ref<OrtDependencyGraphs | null>(null)
+  const dependencyGraph = ref<Record<string, DependencyGraph> | null>(null)
 
   const rootPackageIds = computed<string[]>(() => {
     if (!dependencyGraph.value) return []
     const ids = new Set<string>()
     for (const graph of Object.values(dependencyGraph.value)) {
-      for (const scopeEntries of Object.values(graph.scopes)) {
+      for (const scopeEntries of Object.values(graph.scopes ?? {})) {
         for (const entry of scopeEntries) {
-          // entry.root is a direct index into the packages list
-          const pkgId = graph.packages[entry.root]
+          const pkgId = (graph.packages ?? [])[entry.root]
           if (pkgId) ids.add(pkgId)
         }
       }
@@ -152,23 +59,22 @@ export const useScanResultStore = defineStore('scanResult', () => {
     if (!dependencyGraph.value) return {}
     const map: Record<string, string[]> = {}
     for (const graph of Object.values(dependencyGraph.value)) {
-      // node index → package id
-      // An empty node object {} means pkg: 0 (defaults to packages[0])
+      const packages = graph.packages ?? []
+      const nodes = graph.nodes ?? []
+      const edges = graph.edges ?? []
       const nodeToId: Record<number, string> = {}
-      for (let i = 0; i < graph.nodes.length; i++) {
-        const node = graph.nodes[i]
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i]
         if (node !== undefined) {
           const pkgIdx = node.pkg ?? 0
-          const pkgId = graph.packages[pkgIdx]
+          const pkgId = packages[pkgIdx]
           if (pkgId) nodeToId[i] = pkgId
         }
       }
-      // adjacency: node → child nodes
       const adj: Record<number, number[]> = {}
-      for (const edge of graph.edges) {
-        ;(adj[edge.from] ??= []).push(edge.to)
+      for (const edge of edges) {
+        ;(adj[edge.from ?? 0] ??= []).push(edge.to ?? 0)
       }
-      // build package-level dependency map
       for (const [nodeIdx, pkgId] of Object.entries(nodeToId)) {
         const childNodes = adj[Number(nodeIdx)] ?? []
         const childIds = childNodes.flatMap((n) => (nodeToId[n] ? [nodeToId[n]] : []))
@@ -184,28 +90,19 @@ export const useScanResultStore = defineStore('scanResult', () => {
   })
 
   async function fetchDependencyGraph() {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(new URL('/dependency-graph', base).toString())
-    if (res.ok) {
-      dependencyGraph.value = await res.json()
-    }
+    const data = await api.getDependencyGraph()
+    dependencyGraph.value = data
   }
 
   async function fetchScanResult() {
     loading.value = true
     error.value = null
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || ''
-      const res = await fetch(new URL('/scan-result', base).toString())
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail ?? `HTTP ${res.status}`)
-      }
-      const data: OrtResult = await res.json()
+      const data = await api.getScanResult()
       repository.value = data.repository
       projects.value = data.projects
       packages.value = data.packages
-      scanResults.value = data.scan_results
+      scanResults.value = data.scanResults
       await fetchDependencyGraph()
       await fetchAllCurations()
     } catch (e) {
@@ -216,122 +113,63 @@ export const useScanResultStore = defineStore('scanResult', () => {
   }
 
   async function fetchPathExcludes(packageId: string) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(`/path-excludes?package_id=${encodeURIComponent(packageId)}`, base).toString(),
-    )
-    if (res.ok) {
-      const data: PackagePathExcludes = await res.json()
-      pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
-    }
+    const data = await api.getPathExcludes({ packageId })
+    pathExcludes.value = { ...pathExcludes.value, [packageId]: data.pathExcludes }
   }
 
   async function addPathExclude(packageId: string, exclude: PathExclude) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(new URL('/path-excludes', base).toString(), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ package_id: packageId, ...exclude }),
+    const data = await api.addPathExclude({
+      addPathExcludeRequest: { packageId, ...exclude },
     })
-    if (res.ok) {
-      const data: PackagePathExcludes = await res.json()
-      pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
-    }
+    pathExcludes.value = { ...pathExcludes.value, [packageId]: data.pathExcludes }
   }
 
   async function removePathExclude(packageId: string, pattern: string) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(
-        `/path-excludes?package_id=${encodeURIComponent(packageId)}&pattern=${encodeURIComponent(pattern)}`,
-        base,
-      ).toString(),
-      { method: 'DELETE' },
-    )
-    if (res.ok) {
-      const data: PackagePathExcludes = await res.json()
-      pathExcludes.value = { ...pathExcludes.value, [packageId]: data.path_excludes }
-    }
+    const data = await api.removePathExclude({ packageId, pattern })
+    pathExcludes.value = { ...pathExcludes.value, [packageId]: data.pathExcludes }
   }
 
   async function fetchAllCurations() {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(new URL('/license-curations/all', base).toString())
-    if (res.ok) {
-      const data: PackageCuration[] = await res.json()
-      const map: Record<string, PackageCuration> = {}
-      for (const c of data) {
-        map[c.package_id] = c
-      }
-      curations.value = { ...curations.value, ...map }
+    const data = await api.getAllLicenseCurations()
+    const map: Record<string, PackageCuration> = {}
+    for (const c of data) {
+      map[c.packageId] = c
     }
+    curations.value = { ...curations.value, ...map }
   }
 
   async function fetchCuration(packageId: string) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(`/license-curations?package_id=${encodeURIComponent(packageId)}`, base).toString(),
-    )
-    if (res.ok) {
-      const data: PackageCuration = await res.json()
-      curations.value = { ...curations.value, [packageId]: data }
-    }
+    const data = await api.getLicenseCuration({ packageId })
+    curations.value = { ...curations.value, [packageId]: data }
   }
 
   async function setCuration(packageId: string, comment: string, concluded_license: string) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(new URL('/license-curations', base).toString(), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ package_id: packageId, comment, concluded_license }),
+    const data = await api.setLicenseCuration({
+      setCurationRequest: { packageId, comment, concludedLicense: concluded_license },
     })
-    if (res.ok) {
-      const data: PackageCuration = await res.json()
-      curations.value = { ...curations.value, [packageId]: data }
-    }
+    curations.value = { ...curations.value, [packageId]: data }
   }
 
   async function removeCuration(packageId: string) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(`/license-curations?package_id=${encodeURIComponent(packageId)}`, base).toString(),
-      { method: 'DELETE' },
-    )
-    if (res.ok) {
-      const data: PackageCuration = await res.json()
-      curations.value = { ...curations.value, [packageId]: data }
-    }
+    const data = await api.removeLicenseCuration({ packageId })
+    curations.value = { ...curations.value, [packageId]: data }
   }
 
   async function fetchFindingCurations(packageId: string) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(`/finding-curations?package_id=${encodeURIComponent(packageId)}`, base).toString(),
-    )
-    if (res.ok) {
-      const data: { package_id: string; license_finding_curations: LicenseFindingCuration[] } =
-        await res.json()
-      findingCurations.value = {
-        ...findingCurations.value,
-        [packageId]: data.license_finding_curations,
-      }
+    const data = await api.getFindingCurations({ packageId })
+    findingCurations.value = {
+      ...findingCurations.value,
+      [packageId]: data.licenseFindingCurations,
     }
   }
 
   async function setFindingCuration(packageId: string, curation: LicenseFindingCuration) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(new URL('/finding-curations', base).toString(), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ package_id: packageId, ...curation }),
+    const data = await api.setFindingCuration({
+      setFindingCurationRequest: { packageId, ...curation },
     })
-    if (res.ok) {
-      const data: { package_id: string; license_finding_curations: LicenseFindingCuration[] } =
-        await res.json()
-      findingCurations.value = {
-        ...findingCurations.value,
-        [packageId]: data.license_finding_curations,
-      }
+    findingCurations.value = {
+      ...findingCurations.value,
+      [packageId]: data.licenseFindingCurations,
     }
   }
 
@@ -341,21 +179,10 @@ export const useScanResultStore = defineStore('scanResult', () => {
     startLines: string,
     detectedLicense: string,
   ) {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(
-        `/finding-curations?package_id=${encodeURIComponent(packageId)}&path=${encodeURIComponent(path)}&start_lines=${encodeURIComponent(startLines)}&detected_license=${encodeURIComponent(detectedLicense)}`,
-        base,
-      ).toString(),
-      { method: 'DELETE' },
-    )
-    if (res.ok) {
-      const data: { package_id: string; license_finding_curations: LicenseFindingCuration[] } =
-        await res.json()
-      findingCurations.value = {
-        ...findingCurations.value,
-        [packageId]: data.license_finding_curations,
-      }
+    const data = await api.removeFindingCuration({ packageId, path, startLines, detectedLicense })
+    findingCurations.value = {
+      ...findingCurations.value,
+      [packageId]: data.licenseFindingCurations,
     }
   }
 

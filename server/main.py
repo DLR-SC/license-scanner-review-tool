@@ -16,9 +16,14 @@ import httpx
 import yaml
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.routing import APIRoute
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger("uvicorn")
+
+
+def _unique_id(route: APIRoute) -> str:
+    return route.name
 
 
 @asynccontextmanager
@@ -27,7 +32,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, generate_unique_id_function=_unique_id)
 
 app.add_middleware(
     CORSMiddleware,
@@ -491,13 +496,37 @@ async def get_license_text(license: str):
     return result
 
 
+class DependencyGraphNode(BaseModel):
+    pkg: int = 0
+    fragment: int | None = None
+
+
+class DependencyGraphEdge(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+    from_: int = Field(0, alias="from")
+    to: int = 0
+
+
+class DependencyGraphScopeEntry(BaseModel):
+    root: int
+    fragment: int | None = None
+
+
+class DependencyGraph(BaseModel):
+    packages: list[str] = []
+    nodes: list[DependencyGraphNode] = []
+    edges: list[DependencyGraphEdge] = []
+    scopes: dict[str, list[DependencyGraphScopeEntry]] = {}
+
+
 @app.get("/dependency-graph")
-def get_dependency_graph() -> dict:
+def get_dependency_graph() -> dict[str, DependencyGraph]:
     if _scan_data is None:
         raise HTTPException(
             status_code=404, detail=f"scan-result.yml not found at {SCAN_RESULT_PATH}"
         )
-    return _scan_data["analyzer"]["result"].get("dependency_graphs", {})
+    raw = _scan_data["analyzer"]["result"].get("dependency_graphs", {})
+    return {k: DependencyGraph.model_validate(v) for k, v in raw.items()}
 
 
 @app.get("/scan-result", response_model=OrtResult)

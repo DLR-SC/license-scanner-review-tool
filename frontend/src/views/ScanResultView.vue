@@ -26,6 +26,7 @@ import {
   type Package,
 } from '@/stores/scanResult'
 import type { Option } from '@/components/DescribedSelect.vue'
+import { api } from '@/api'
 
 const store = useScanResultStore()
 const route = useRoute()
@@ -171,13 +172,13 @@ const currentPackage = computed(() => {
   const purl = navigationPath.value.at(-1)
   if (!purl) return null
   const decoded = decodeURIComponent(purl)
-  return store.packages.find((p) => decodeURIComponent(p.purl) === decoded) ?? null
+  return store.packages.find((p) => decodeURIComponent(p.purl ?? '') === decoded) ?? null
 })
 
 const purlToPackage = computed(() => {
   // Key by decoded PURL so lookups work regardless of %40 vs @ encoding.
   const map = new Map<string, Package>()
-  for (const p of store.packages) map.set(decodeURIComponent(p.purl), p)
+  for (const p of store.packages) map.set(decodeURIComponent(p.purl ?? ''), p)
   return map
 })
 
@@ -209,7 +210,7 @@ const registryUrl = computed(() => {
 })
 
 const currentScanResult = computed(
-  () => store.scanResults.find((sr) => sr.package_id === currentPackage.value?.id) ?? null,
+  () => store.scanResults.find((sr) => sr.packageId === currentPackage.value?.id) ?? null,
 )
 
 const detectedLicenses = computed(() => {
@@ -224,7 +225,7 @@ const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
 const currentExcludes = computed(() => store.pathExcludes[currentPackage.value?.id ?? ''] ?? [])
 
 const reviewFindings = computed(() => {
-  const spdx = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
+  const spdx = currentPackage.value?.declaredLicensesProcessed?.spdxExpression ?? ''
   const excludePatterns = currentExcludes.value.map((e) => e.pattern)
   const curationsMap = currentFindingCurationsMap.value
   return allFindings.value
@@ -253,7 +254,7 @@ const hiddenFindings = computed(() =>
   allFindings.value.filter(
     (f) =>
       f.score === 100 &&
-      (currentPackage.value?.declared_licenses_processed.spdx_expression.includes(f.license) ??
+      (currentPackage.value?.declaredLicensesProcessed?.spdxExpression?.includes(f.license) ??
         false),
   ),
 )
@@ -276,8 +277,8 @@ const siblingFindingsInFile = computed(() => {
     (f) =>
       f.location.path === path &&
       !(
-        f.location.start_line === currentFinding.value!.location.start_line &&
-        f.location.end_line === currentFinding.value!.location.end_line &&
+        f.location.startLine === currentFinding.value!.location.startLine &&
+        f.location.endLine === currentFinding.value!.location.endLine &&
         f.license === currentFinding.value!.license
       ),
   )
@@ -297,7 +298,7 @@ const curationLicense = ref('')
 const currentCuration = computed(() => store.curations[currentPackage.value?.id ?? ''] ?? null)
 
 function findingCurationKey(f: LicenseFinding): string {
-  return `${f.location.path}:${f.location.start_line}:${f.license}`
+  return `${f.location.path}:${f.location.startLine}:${f.license}`
 }
 
 const currentFindingCurations = computed(
@@ -307,7 +308,7 @@ const currentFindingCurations = computed(
 const currentFindingCurationsMap = computed(() => {
   const map = new Map<string, LicenseFindingCuration>()
   for (const c of currentFindingCurations.value) {
-    map.set(`${c.path}:${c.start_lines}:${c.detected_license}`, c)
+    map.set(`${c.path}:${c.startLines}:${c.detectedLicense}`, c)
   }
   return map
 })
@@ -320,13 +321,13 @@ const decisionReason = ref<Option['label']>('CODE')
 const showReviewed = ref(false)
 
 function openTrustForm() {
-  curationLicense.value = currentPackage.value?.declared_licenses_processed.spdx_expression ?? ''
+  curationLicense.value = currentPackage.value?.declaredLicensesProcessed?.spdxExpression ?? ''
   curationComment.value = 'Declared license is correct'
   showCurationForm.value = true
 }
 
 function openCurationForm() {
-  curationLicense.value = currentCuration.value?.concluded_license ?? ''
+  curationLicense.value = currentCuration.value?.concludedLicense ?? ''
   curationComment.value = currentCuration.value?.comment ?? ''
   showCurationForm.value = true
 }
@@ -359,13 +360,13 @@ async function confirmDecisionForm() {
   if (!currentPackage.value || !currentFinding.value) return
   await store.setFindingCuration(currentPackage.value.id, {
     path: currentFinding.value.location.path,
-    start_lines: String(currentFinding.value.location.start_line),
-    line_count:
-      currentFinding.value.location.end_line - currentFinding.value.location.start_line + 1,
-    detected_license: currentFinding.value.license,
+    startLines: String(currentFinding.value.location.startLine),
+    lineCount:
+      currentFinding.value.location.endLine - currentFinding.value.location.startLine + 1,
+    detectedLicense: currentFinding.value.license,
     reason: decisionReason.value,
     comment: decisionComment.value,
-    concluded_license: decisionLicense.value,
+    concludedLicense: decisionLicense.value,
   })
   showDecisionForm.value = false
 }
@@ -388,7 +389,7 @@ async function removeFindingCuration(f: LicenseFinding) {
   await store.removeFindingCuration(
     currentPackage.value.id,
     f.location.path,
-    String(f.location.start_line),
+    String(f.location.startLine),
     f.license,
   )
 }
@@ -405,21 +406,16 @@ async function loadFinding(finding: LicenseFinding) {
   fileContent.value = null
   fileLoading.value = true
   try {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const params = new URLSearchParams({
-      package_id: currentPackage.value!.id,
+    const data = await api.getFileContent({
+      packageId: currentPackage.value!.id,
       path: finding.location.path,
-      start_line: String(finding.location.start_line),
-      end_line: String(finding.location.end_line),
-      context_before: String(contextAbove.value),
-      context_after: String(contextBelow.value),
+      startLine: finding.location.startLine,
+      endLine: finding.location.endLine,
+      contextBefore: contextAbove.value,
+      contextAfter: contextBelow.value,
     })
-    const res = await fetch(new URL(`/file-content?${params}`, base).toString())
-    if (res.ok) {
-      const data = await res.json()
-      fileContent.value = data.lines
-      fileTotalLines.value = data.total_lines
-    }
+    fileContent.value = data.lines
+    fileTotalLines.value = data.totalLines ?? 0
   } finally {
     fileLoading.value = false
   }
@@ -440,7 +436,7 @@ async function expandBelow() {
  * a single-line header — i.e. the finding spans more than 3 lines.
  */
 function isWholeLicenseText(f: LicenseFinding): boolean {
-  return f.location.end_line - f.location.start_line > 3
+  return f.location.endLine - f.location.startLine > 3
 }
 
 const canonicalText = ref<string | null>(null)
@@ -450,14 +446,8 @@ async function loadCanonicalText(license: string) {
   canonicalText.value = null
   canonicalLoading.value = true
   try {
-    const base = import.meta.env.VITE_API_BASE_URL || ''
-    const res = await fetch(
-      new URL(`/license-text?license=${encodeURIComponent(license)}`, base).toString(),
-    )
-    if (res.ok) {
-      const data = await res.json()
-      canonicalText.value = data.text
-    }
+    const data = await api.getLicenseText({ license })
+    canonicalText.value = data.text ?? null
   } finally {
     canonicalLoading.value = false
   }
@@ -517,7 +507,7 @@ watch(currentPackage, (pkg) => {
   }
 })
 
-const vcsSiblings = computed(() => currentPackage.value?.vcs_siblings ?? [])
+const vcsSiblings = computed(() => currentPackage.value?.vcsSiblings ?? [])
 
 function shortId(id: string): string {
   const parts = id.split(':')
@@ -537,14 +527,8 @@ watch(
     if (!pkg?.purl) return
     downloadsLoading.value = true
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || ''
-      const res = await fetch(
-        new URL(`/downloads?purl=${encodeURIComponent(pkg.purl)}`, base).toString(),
-      )
-      if (res.ok) {
-        const data = await res.json()
-        weeklyDownloads.value = data.weekly_downloads
-      }
+      const data = await api.getDownloads({ purl: pkg.purl })
+      weeklyDownloads.value = data.weeklyDownloads ?? null
     } finally {
       downloadsLoading.value = false
     }
@@ -556,17 +540,11 @@ watch(
   currentPackage,
   async (pkg) => {
     githubStars.value = null
-    if (!pkg?.vcs_url) return
+    if (!pkg?.vcsUrl) return
     starsLoading.value = true
     try {
-      const base = import.meta.env.VITE_API_BASE_URL || ''
-      const res = await fetch(
-        new URL(`/github-stars?url=${encodeURIComponent(pkg.vcs_url)}`, base).toString(),
-      )
-      if (res.ok) {
-        const data = await res.json()
-        githubStars.value = data.stars
-      }
+      const data = await api.getGithubStars({ url: pkg.vcsUrl })
+      githubStars.value = data.stars ?? null
     } finally {
       starsLoading.value = false
     }
@@ -592,7 +570,7 @@ watch(
             >
               <CarbonCheckmarkFilled
                 :class="
-                  store.curations[rootId]?.concluded_license ? 'text-green-500' : 'text-gray-300'
+                  store.curations[rootId]?.concludedLicense ? 'text-green-500' : 'text-gray-300'
                 "
                 aria-hidden="true"
               />
@@ -664,12 +642,12 @@ watch(
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Homepage</th>
                     <td class="px-4 py-2">
                       <a
-                        v-if="currentPackage.homepage_url"
-                        :href="currentPackage.homepage_url"
+                        v-if="currentPackage.homepageUrl"
+                        :href="currentPackage.homepageUrl"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="underline"
-                        >{{ currentPackage.homepage_url }}</a
+                        >{{ currentPackage.homepageUrl }}</a
                       >
                     </td>
                   </tr>
@@ -677,18 +655,18 @@ watch(
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">VCS</th>
                     <td class="px-4 py-2">
                       <a
-                        v-if="currentPackage.vcs_url"
-                        :href="currentPackage.vcs_url"
+                        v-if="currentPackage.vcsUrl"
+                        :href="currentPackage.vcsUrl"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="underline"
-                        >{{ currentPackage.vcs_url }}</a
+                        >{{ currentPackage.vcsUrl }}</a
                       >
                     </td>
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Authors</th>
-                    <td class="px-4 py-2">{{ currentPackage.authors.join(', ') }}</td>
+                    <td class="px-4 py-2">{{ currentPackage.authors?.join(', ') }}</td>
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
@@ -696,17 +674,17 @@ watch(
                     </th>
                     <td class="px-4 py-2">
                       <InfoTooltip
-                        v-if="!currentPackage.declared_licenses_processed.spdx_expression"
+                        v-if="!currentPackage.declaredLicensesProcessed?.spdxExpression"
                         warning
                         :text="
-                          currentPackage.declared_licenses.length === 0
+                          (currentPackage.declaredLicenses?.length ?? 0) === 0
                             ? 'No declared license found'
                             : 'Not a valid SPDX expression'
                         "
                       />
                       {{
-                        currentPackage.declared_licenses_processed.spdx_expression ||
-                        currentPackage.declared_licenses.join(', ')
+                        currentPackage.declaredLicensesProcessed?.spdxExpression ||
+                        currentPackage.declaredLicenses?.join(', ')
                       }}
                     </td>
                   </tr>
@@ -734,7 +712,7 @@ watch(
                           >
                             <CarbonCheckmarkFilled
                               :class="
-                                store.curations[dep.id]?.concluded_license
+                                store.curations[dep.id]?.concludedLicense
                                   ? 'text-green-500'
                                   : 'text-gray-300'
                               "
@@ -806,10 +784,10 @@ watch(
                 <AppButton variant="text" @click="showCurationForm = false">Cancel</AppButton>
               </div>
             </template>
-            <template v-else-if="currentCuration?.concluded_license">
+            <template v-else-if="currentCuration?.concludedLicense">
               <div class="flex items-baseline gap-3">
                 <span class="text-sm font-semibold shrink-0">Concluded license</span>
-                <span class="font-mono text-sm">{{ currentCuration.concluded_license }}</span>
+                <span class="font-mono text-sm">{{ currentCuration.concludedLicense }}</span>
                 <span v-if="currentCuration.comment" class="text-gray-400 text-xs">{{
                   currentCuration.comment
                 }}</span>
@@ -824,7 +802,7 @@ watch(
             <template v-else>
               <div class="flex items-center gap-2">
                 <AppButton
-                  v-if="currentPackage.declared_licenses_processed.spdx_expression"
+                  v-if="currentPackage.declaredLicensesProcessed?.spdxExpression"
                   variant="primary"
                   @click="openTrustForm"
                 >
@@ -898,8 +876,8 @@ watch(
                     <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
                     <span class="text-gray-500"
                       >{{ currentFinding.location.path }}:{{
-                        currentFinding.location.start_line
-                      }}–{{ currentFinding.location.end_line }}</span
+                        currentFinding.location.startLine
+                      }}–{{ currentFinding.location.endLine }}</span
                     >
                     <AppButton v-if="!showExcludeForm" @click="openExcludeForm"
                       >Exclude path</AppButton
@@ -1017,11 +995,11 @@ watch(
                 </button>
                 <div
                   v-for="f in hiddenFindings"
-                  :key="`${f.location.path}:${f.location.start_line}`"
+                  :key="`${f.location.path}:${f.location.startLine}`"
                   class="text-xs font-mono text-gray-500 px-1"
                 >
                   <span class="font-semibold">{{ f.license }}</span>
-                  {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+                  {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
                   <span class="text-gray-400">score {{ f.score }}</span>
                 </div>
               </div>
@@ -1048,11 +1026,11 @@ watch(
                   class="text-xs font-mono text-gray-500 px-1 flex items-center gap-2"
                 >
                   <span class="font-semibold">{{ f.license }}</span>
-                  {{ f.location.path }}:{{ f.location.start_line }}–{{ f.location.end_line }}
+                  {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
                   <span class="text-green-700">
                     →
                     {{
-                      currentFindingCurationsMap.get(findingCurationKey(f))?.concluded_license ??
+                      currentFindingCurationsMap.get(findingCurationKey(f))?.concludedLicense ??
                       '?'
                     }}
                   </span>

@@ -44,3 +44,7 @@ test-results/
 playwright-report/
 
 .env
+
+# Generated API client
+openapi.json
+src/client/
