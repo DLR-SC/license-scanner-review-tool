@@ -257,6 +257,12 @@ const reviewedFindings = computed(() =>
   allFindings.value.filter((f) => currentFindingCurationsMap.value.has(findingCurationKey(f))),
 )
 
+const allDepsAndFindingsConcluded = computed(
+  () =>
+    currentDeps.value.every((dep) => !!store.curations[dep.id]?.concludedLicense) &&
+    reviewFindings.value.length === 0,
+)
+
 const reviewedByLicense = computed(() => {
   const map = new Map<string, number>()
   for (const f of reviewedFindings.value) {
@@ -306,6 +312,7 @@ const excludeFormReason = ref<Option['label']>('BUILD_TOOL_OF')
 const excludeFormComment = ref('')
 
 const showCurationForm = ref(false)
+const isTrustForm = ref(false)
 const curationComment = ref('')
 const curationLicense = ref('')
 
@@ -333,12 +340,14 @@ const decisionComment = ref('')
 const decisionReason = ref<Option['label']>('CODE')
 
 function openTrustForm() {
+  isTrustForm.value = true
   curationLicense.value = currentPackage.value?.declaredLicensesProcessed?.spdxExpression ?? ''
   curationComment.value = 'Declared license is correct'
   showCurationForm.value = true
 }
 
 function openCurationForm() {
+  isTrustForm.value = false
   curationLicense.value = currentCuration.value?.concludedLicense ?? ''
   curationComment.value = currentCuration.value?.comment ?? ''
   showCurationForm.value = true
@@ -525,6 +534,7 @@ watch(currentPackage, (pkg) => {
   fileTotalLines.value = 0
   showExcludeForm.value = false
   showCurationForm.value = false
+  isTrustForm.value = false
   showDecisionForm.value = false
   suggestedDeclaredLicense.value = ''
   if (pkg) {
@@ -799,14 +809,98 @@ watch(
           </AppPanel>
         </div>
 
-        <!-- Review panel -->
-        <AppPanel
-          title="License review"
-          tooltip="Review the license findings and the dependencies before concluding the license for this package. Or trust the declared license if you are confident it's correct. For each finding you can view the detected license text in context, compare it to a canonical version of the license, and then decide to exclude the file from the scan results or to conclude a specific license for the finding."
-          class="mt-4"
+        <!-- License conclusion panel -->
+        <div
+          class="border-2 rounded-lg overflow-hidden mt-4"
+          :class="
+            currentCuration?.concludedLicense && !showCurationForm
+              ? 'border-green-400 shadow-sm'
+              : 'border-blue-400 shadow-md'
+          "
         >
-          <div class="flex flex-col gap-2 px-4 py-3">
-            <template v-if="showCurationForm">
+          <div
+            class="px-4 py-3 flex items-center gap-2"
+            :class="
+              currentCuration?.concludedLicense && !showCurationForm
+                ? 'bg-green-100'
+                : 'bg-blue-100'
+            "
+          >
+            <CarbonCheckmarkFilled
+              v-if="currentCuration?.concludedLicense && !showCurationForm"
+              class="w-5 h-5 text-green-600"
+              aria-hidden="true"
+            />
+            <h2 class="text-base font-semibold">
+              {{
+                currentCuration?.concludedLicense && !showCurationForm
+                  ? 'License concluded'
+                  : 'Conclude license'
+              }}
+            </h2>
+          </div>
+          <div
+            class="px-4 py-4 flex flex-col gap-3"
+            :class="currentCuration?.concludedLicense && !showCurationForm ? 'bg-green-50' : ''"
+          >
+            <template v-if="currentCuration?.concludedLicense && !showCurationForm">
+              <p class="text-sm text-green-800">
+                The license of this package has been concluded. You can now go back to the parent
+                package to continue your review there.
+              </p>
+              <div class="flex items-baseline gap-3">
+                <LicensePill :license="currentCuration.concludedLicense!" />
+                <span v-if="currentCuration.comment" class="text-gray-500 text-xs">{{
+                  currentCuration.comment
+                }}</span>
+                <div class="ml-auto flex items-center gap-1 shrink-0">
+                  <AppButton @click="openCurationForm">Edit</AppButton>
+                  <AppButton
+                    variant="danger"
+                    class="inline-flex items-center gap-1.5"
+                    @click="store.removeCuration(currentPackage!.id)"
+                  >
+                    <CarbonTrashCan class="w-4 h-4" />Delete
+                  </AppButton>
+                </div>
+              </div>
+            </template>
+            <template v-else-if="showCurationForm">
+              <div
+                v-if="isTrustForm"
+                class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
+              >
+                Only use this option when you are really confident that the declared license is
+                reliable and correct.
+              </div>
+              <div
+                v-else
+                class="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded px-3 py-2"
+              >
+                Ensure that all licenses included by your review are compatible with the license you
+                are about to conclude. Refer to the
+                <a
+                  href="https://www.dlr.de/de/sc/medien/publikationen/broschuere-open-source-software-im-dlr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline font-medium"
+                  >DLR Open Source compatibility guide</a
+                >
+                for compatibility analysis.
+              </div>
+              <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
+                <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
+                  Included licenses after review
+                  <InfoTooltip
+                    text="Use this as a guide when concluding the overall license for this package. The list includes the declared license, any licenses concluded for individual findings, and the concluded licenses of all direct dependencies."
+                  />
+                </span>
+                <LicensePill
+                  v-for="license in includedLicenses"
+                  :key="license"
+                  :license="license"
+                />
+              </div>
               <div class="flex flex-wrap gap-2 items-end">
                 <SpdxInput
                   v-model="curationLicense"
@@ -824,37 +918,49 @@ watch(
                 <AppButton variant="text" @click="showCurationForm = false">Cancel</AppButton>
               </div>
             </template>
-            <template v-else-if="currentCuration?.concludedLicense">
-              <div class="flex items-baseline gap-3">
-                <span class="text-sm font-semibold shrink-0">Concluded license</span>
-                <LicensePill :license="currentCuration.concludedLicense!" />
-                <span v-if="currentCuration.comment" class="text-gray-400 text-xs">{{
-                  currentCuration.comment
-                }}</span>
-                <div class="ml-auto flex items-center gap-1 shrink-0">
-                  <AppButton @click="openCurationForm">Edit</AppButton>
-                  <AppButton
-                    variant="danger"
-                    class="inline-flex items-center gap-1.5"
-                    @click="store.removeCuration(currentPackage!.id)"
-                  >
-                    <CarbonTrashCan class="w-4 h-4" />Delete
-                  </AppButton>
-                </div>
-              </div>
-            </template>
             <template v-else>
+              <p v-if="allDepsAndFindingsConcluded" class="text-sm font-medium text-gray-800">
+                All findings and dependencies have been reviewed. Conclude the license for this
+                package now based on your review.
+              </p>
+              <p v-else class="text-sm text-gray-600">
+                Review the license findings and child dependencies in the panel below, then return
+                here to conclude the license. Alternatively, trust the declared license if you are
+                confident it is correct based on the package's popularity metadata.
+              </p>
               <div class="flex items-center gap-2">
                 <AppButton
                   v-if="currentPackage.declaredLicensesProcessed?.spdxExpression"
-                  variant="primary"
                   @click="openTrustForm"
                 >
                   Trust declared license
                 </AppButton>
-                <AppButton @click="openCurationForm">Conclude license</AppButton>
+                <AppButton variant="primary" @click="openCurationForm">Conclude license</AppButton>
+              </div>
+              <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
+                <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
+                  Included licenses after review
+                  <InfoTooltip
+                    text="Use this as a guide when concluding the overall license for this package. The list includes the declared license, any licenses concluded for individual findings, and the concluded licenses of all direct dependencies."
+                  />
+                </span>
+                <LicensePill
+                  v-for="license in includedLicenses"
+                  :key="license"
+                  :license="license"
+                />
               </div>
             </template>
+          </div>
+        </div>
+
+        <!-- License findings panel -->
+        <AppPanel
+          title="License findings"
+          tooltip="Review the license findings and the dependencies before concluding the license for this package. For each finding you can view the detected license text in context, compare it to a canonical version of the license, and then decide to exclude the file from the scan results or to conclude a specific license for the finding."
+          class="mt-4"
+        >
+          <div class="px-4 py-3">
             <SpdxInput
               v-model="suggestedDeclaredLicense"
               label="Suggested declared license"
@@ -865,15 +971,6 @@ watch(
                 text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
               />
             </SpdxInput>
-            <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
-              <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
-                Included licenses after review
-                <InfoTooltip
-                  text="Use this as a guide when concluding the overall license for this package. The list includes the declared license, any licenses concluded for individual findings, and the concluded licenses of all direct dependencies."
-                />
-              </span>
-              <LicensePill v-for="license in includedLicenses" :key="license" :license="license" />
-            </div>
           </div>
           <div
             v-if="allFindings.length"
