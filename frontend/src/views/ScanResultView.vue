@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, useTemplateRef } from 'vue'
 import CarbonCheckmarkFilled from '~icons/carbon/checkmark-filled'
 import AppButton from '@/components/AppButton.vue'
 import InfoTooltip from '@/components/InfoTooltip.vue'
@@ -415,11 +415,14 @@ const fileContent = ref<Array<{ number: number; content: string; highlighted: bo
   null,
 )
 const fileLoading = ref(false)
+const fileContentEl = useTemplateRef('fileContentEl')
+const fileLoadingHeight = ref(0)
 const contextAbove = ref(5)
 const contextBelow = ref(5)
 const fileTotalLines = ref(0)
 
 async function loadFinding(finding: LicenseFinding) {
+  fileLoadingHeight.value = fileContentEl.value?.clientHeight ?? 0
   fileContent.value = null
   fileLoading.value = true
   try {
@@ -981,12 +984,20 @@ watch(
                   <AppButton @click="confirmExclude">Confirm</AppButton>
                   <AppButton variant="text" @click="showExcludeForm = false">Cancel</AppButton>
                 </div>
-                <div v-if="fileLoading" class="px-3 py-2 text-sm text-gray-400">Loading…</div>
-                <div v-else-if="fileContent === null" class="px-3 py-2 text-sm text-red-400">
+                <div
+                  v-if="fileLoading && fileContent === null"
+                  class="animate-pulse bg-gray-100"
+                  :style="fileLoadingHeight ? `height: ${fileLoadingHeight}px` : 'height: 8rem'"
+                />
+                <div
+                  v-else-if="!fileLoading && fileContent === null"
+                  class="px-3 py-2 text-sm text-red-400"
+                >
                   Could not load file.
                 </div>
                 <pre
-                  v-else
+                  v-if="fileContent !== null"
+                  ref="fileContentEl"
                   class="overflow-x-auto text-xs"
                 ><button v-if="(fileContent[0]?.number ?? 0) > 1" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandAbove"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↑ Load 10 more lines</span></button><template v-for="line in fileContent" :key="line.number"><div :class="line.highlighted ? 'bg-yellow-100' : ''" class="px-3 py-px"><span class="select-none text-gray-400 mr-3 inline-block w-8 text-right">{{ line.number }}</span>{{ line.content }}</div></template><button v-if="(fileContent.at(-1)?.number ?? 0) < fileTotalLines" type="button" class="w-full flex items-center gap-2 px-3 py-px bg-blue-50 hover:bg-blue-100 select-none text-blue-600" @click="expandBelow"><span class="text-gray-400 inline-block w-8 text-right">···</span><span>↓ Load 10 more lines</span></button></pre>
                 <div
