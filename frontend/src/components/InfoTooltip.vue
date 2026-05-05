@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef, useId } from 'vue'
 import CarbonInformationFilled from '~icons/carbon/information-filled'
 
 defineProps<{ text: string; warning?: boolean }>()
@@ -13,9 +13,10 @@ defineProps<{ text: string; warning?: boolean }>()
 const pinned = ref(false)
 const hovered = ref(false)
 const root = ref<HTMLElement | null>(null)
-const tooltipEl = useTemplateRef<HTMLElement>('tooltipEl')
+const tooltipEl = useTemplateRef('tooltipEl')
 const offsetX = ref(0)
 const flipped = ref(false)
+const tooltipId = useId()
 
 const visible = computed(() => pinned.value || hovered.value)
 
@@ -53,21 +54,31 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
 <template>
   <span ref="root" class="relative inline-flex items-center">
-    <CarbonInformationFilled
-      :class="warning ? 'text-yellow-600' : 'text-gray-400'"
-      class="cursor-pointer"
-      aria-hidden="true"
+    <button
+      type="button"
+      :aria-describedby="visible ? tooltipId : undefined"
+      class="cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-400"
       @mouseenter="show"
       @mouseleave="hide"
       @click.stop="toggle"
-    />
+      @keydown.space.stop="toggle"
+      @keydown.enter.stop="toggle"
+      @keydown.escape.stop="pinned = false"
+    >
+      <CarbonInformationFilled
+        :class="warning ? 'text-yellow-600' : 'text-gray-400'"
+        aria-hidden="true"
+      />
+      <span class="sr-only">More information</span>
+    </button>
     <span
       v-if="visible"
+      :id="tooltipId"
       ref="tooltipEl"
+      role="tooltip"
       class="absolute left-1/2 z-10 w-max max-w-xs rounded bg-gray-800 px-2.5 py-1.5 text-sm text-white shadow-md"
       :class="flipped ? 'top-full mt-1.5' : 'bottom-full mb-1.5'"
       :style="{ transform: `translateX(calc(-50% + ${offsetX}px))` }"
-      role="tooltip"
     >
       {{ text }}
       <span

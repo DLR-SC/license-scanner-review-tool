@@ -935,6 +935,9 @@ watch(
                       }}
                     </span></span
                   >
+                  <InfoTooltip
+                    text="Findings with a confidence score of 100 whose license is already covered by the package's declared license expression or the license you suggested instead. They don't require review."
+                  />
                 </template>
                 <table class="w-full text-sm">
                   <thead class="bg-gray-50 border-b text-xs text-gray-400">

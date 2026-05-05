@@ -13,16 +13,22 @@ const open = ref(false)
 
 <template>
   <div class="border border-gray-200 rounded">
-    <button
-      class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 text-left"
+    <div
+      class="flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer select-none"
+      role="button"
+      tabindex="0"
       @click="open = !open"
+      @keydown.enter.prevent="open = !open"
+      @keydown.space.prevent="open = !open"
     >
-      <slot name="summary" />
+      <div class="flex items-center gap-2">
+        <slot name="summary" />
+      </div>
       <CarbonChevronDown
         class="w-4 h-4 text-gray-400 transition-transform shrink-0"
         :class="open ? 'rotate-180' : ''"
       />
-    </button>
+    </div>
     <div v-if="open" class="border-t">
       <slot />
     </div>
