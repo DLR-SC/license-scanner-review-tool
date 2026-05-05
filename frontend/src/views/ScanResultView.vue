@@ -978,7 +978,11 @@ watch(
                         {{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}
                       </td>
                       <td class="px-3 py-2 text-right">
-                        <AppButton variant="danger" @click="removeFindingCuration(f)">
+                        <AppButton
+                          variant="danger"
+                          title="Remove finding conclusion"
+                          @click="removeFindingCuration(f)"
+                        >
                           <CarbonTrashCan class="w-4 h-4" />
                         </AppButton>
                       </td>
@@ -1010,6 +1014,7 @@ watch(
                       <td class="px-3 py-2 text-right">
                         <AppButton
                           variant="danger"
+                          title="Remove path exclude"
                           @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
                         >
                           <CarbonTrashCan class="w-4 h-4" />
