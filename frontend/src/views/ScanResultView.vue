@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, useTemplateRef } from 'vue'
 import CarbonCheckmarkFilled from '~icons/carbon/checkmark-filled'
+import CarbonTrashCan from '~icons/carbon/trash-can'
 import AppButton from '@/components/AppButton.vue'
 import CollapsiblePanel from '@/components/CollapsiblePanel.vue'
 import InfoTooltip from '@/components/InfoTooltip.vue'
@@ -832,9 +833,13 @@ watch(
                 }}</span>
                 <div class="ml-auto flex items-center gap-1 shrink-0">
                   <AppButton @click="openCurationForm">Edit</AppButton>
-                  <AppButton variant="danger" @click="store.removeCuration(currentPackage!.id)"
-                    >✕</AppButton
+                  <AppButton
+                    variant="danger"
+                    class="inline-flex items-center gap-1.5"
+                    @click="store.removeCuration(currentPackage!.id)"
                   >
+                    <CarbonTrashCan class="w-4 h-4" />Delete
+                  </AppButton>
                 </div>
               </div>
             </template>
@@ -973,7 +978,9 @@ watch(
                         {{ currentFindingCurationsMap.get(findingCurationKey(f))?.comment }}
                       </td>
                       <td class="px-3 py-2 text-right">
-                        <AppButton variant="danger" @click="removeFindingCuration(f)">✕</AppButton>
+                        <AppButton variant="danger" @click="removeFindingCuration(f)">
+                          <CarbonTrashCan class="w-4 h-4" />
+                        </AppButton>
                       </td>
                     </tr>
                   </tbody>
@@ -1004,8 +1011,9 @@ watch(
                         <AppButton
                           variant="danger"
                           @click="store.removePathExclude(currentPackage!.id, exc.pattern)"
-                          >✕</AppButton
                         >
+                          <CarbonTrashCan class="w-4 h-4" />
+                        </AppButton>
                       </td>
                     </tr>
                   </tbody>

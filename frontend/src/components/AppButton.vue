@@ -24,7 +24,8 @@ withDefaults(
       'border rounded py-1 px-3 text-sm bg-green-50 text-green-700 border-green-300 hover:bg-green-100':
         variant === 'primary',
       'py-1 px-2 text-sm text-gray-400 hover:text-gray-600': variant === 'text',
-      'py-1 px-1 text-sm text-gray-400 hover:text-red-500': variant === 'danger',
+      'border rounded py-1 px-3 text-sm text-red-500 border-red-200 hover:bg-red-50':
+        variant === 'danger',
     }"
   >
     <slot />
