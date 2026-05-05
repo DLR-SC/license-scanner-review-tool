@@ -23,13 +23,40 @@ default:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+frontend:export-schema:
+  extends: .python
+  script:
+    - uv run python export_openapi.py
+  artifacts:
+    paths:
+      - frontend/openapi.json
+    expire_in: 1 hour
+
+frontend:generate:
+  extends: .frontend
+  needs:
+    - job: frontend:export-schema
+      artifacts: true
+  script:
+    - pnpm run generate
+  artifacts:
+    paths:
+      - frontend/src/client/
+    expire_in: 1 hour
+
 frontend:build:
   extends: .frontend
+  needs:
+    - job: frontend:generate
+      artifacts: true
   script:
     - pnpm build
 
 frontend:type-check:
   extends: .frontend
+  needs:
+    - job: frontend:generate
+      artifacts: true
   script:
     - pnpm type-check
 
