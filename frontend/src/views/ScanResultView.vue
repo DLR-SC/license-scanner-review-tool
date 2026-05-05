@@ -839,19 +839,19 @@ watch(
                 </AppButton>
                 <AppButton @click="openCurationForm">Conclude license</AppButton>
               </div>
-              <div class="mt-3 flex items-center gap-2">
-                <span class="text-xs text-gray-500 shrink-0"
-                  >Suggested declared license
-                  <InfoTooltip
-                    text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
-                /></span>
-                <AppInput
-                  v-model="suggestedDeclaredLicense"
-                  placeholder="SPDX expression"
-                  class="font-mono w-2xl"
-                />
-              </div>
             </template>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500 shrink-0"
+                >Suggested declared license
+                <InfoTooltip
+                  text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
+              /></span>
+              <AppInput
+                v-model="suggestedDeclaredLicense"
+                placeholder="SPDX expression"
+                class="font-mono w-2xl"
+              />
+            </div>
             <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
               <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
                 Included licenses after review
