@@ -215,7 +215,7 @@ const currentScanResult = computed(
 
 const detectedLicenses = computed(() => {
   const licenses = currentScanResult.value?.licenses ?? []
-  return [...new Set(licenses.map((f) => f.license))].sort().join(', ')
+  return [...new Set(licenses.map((f) => f.license))].sort()
 })
 
 const findingIndex = ref(0)
@@ -685,7 +685,7 @@ watch(
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
                       Declared licenses
                     </th>
-                    <td class="px-4 py-2">
+                    <td class="px-4 py-2 flex flex-wrap gap-1 items-center">
                       <InfoTooltip
                         v-if="!currentPackage.declaredLicensesProcessed?.spdxExpression"
                         warning
@@ -695,17 +695,28 @@ watch(
                             : 'Not a valid SPDX expression'
                         "
                       />
-                      {{
-                        currentPackage.declaredLicensesProcessed?.spdxExpression ||
-                        currentPackage.declaredLicenses?.join(', ')
-                      }}
+                      <LicensePill
+                        v-if="currentPackage.declaredLicensesProcessed?.spdxExpression"
+                        :license="currentPackage.declaredLicensesProcessed.spdxExpression"
+                      />
+                      <template v-else>
+                        <LicensePill
+                          v-for="l in currentPackage.declaredLicenses"
+                          :key="l"
+                          :license="l"
+                        />
+                      </template>
                     </td>
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
                       Detected licenses
                     </th>
-                    <td class="px-4 py-2">{{ detectedLicenses }}</td>
+                    <td class="px-4 py-2">
+                      <div class="flex flex-wrap gap-1">
+                        <LicensePill v-for="l in detectedLicenses" :key="l" :license="l" />
+                      </div>
+                    </td>
                   </tr>
                   <tr v-if="currentDeps.length">
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 align-top">
@@ -800,7 +811,7 @@ watch(
             <template v-else-if="currentCuration?.concludedLicense">
               <div class="flex items-baseline gap-3">
                 <span class="text-sm font-semibold shrink-0">Concluded license</span>
-                <span class="font-mono text-sm">{{ currentCuration.concludedLicense }}</span>
+                <LicensePill :license="currentCuration.concludedLicense!" />
                 <span v-if="currentCuration.comment" class="text-gray-400 text-xs">{{
                   currentCuration.comment
                 }}</span>
