@@ -376,8 +376,8 @@ async function confirmDecisionForm() {
 
 const includedLicenses = computed<string[]>(() => {
   const licenses = new Set<string>()
-  const declared = currentPackage.value?.declaredLicensesProcessed?.spdxExpression
-  if (declared) licenses.add(declared)
+  const spdx = effectiveSpdxExpression.value
+  if (spdx) licenses.add(spdx)
   for (const c of currentFindingCurations.value) {
     if (c.concludedLicense) licenses.add(c.concludedLicense)
   }
@@ -848,7 +848,7 @@ watch(
                 <AppInput
                   v-model="suggestedDeclaredLicense"
                   placeholder="SPDX expression"
-                  class="font-mono w-48"
+                  class="font-mono w-2xl"
                 />
               </div>
             </template>
