@@ -71,6 +71,11 @@ frontend:format-check:
   script:
     - pnpm format:check
 
+frontend:test-unit:
+  extends: .frontend
+  script:
+    - pnpm test:unit
+
 frontend:test-e2e:
   extends: .frontend
   image: mcr.microsoft.com/playwright:v1.50.0-noble

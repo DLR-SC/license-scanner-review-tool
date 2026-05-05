@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "generate": "openapi-generator-cli generate -i openapi.json -g typescript-fetch -o src/client --additional-properties=supportsES6=true,withSeparateModelsAndApi=true,modelPackage=models,apiPackage=apis",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "type-check": "vue-tsc --build",
     "lint": "pnpm run lint:oxlint && pnpm run lint:eslint",
@@ -50,6 +51,7 @@
     "unplugin-icons": "^23.0.1",
     "vite": "^7.3.1",
     "vite-plugin-vue-devtools": "^8.0.6",
+    "vitest": "^4.1.5",
     "vue-tsc": "^3.2.5"
   },
   "engines": {

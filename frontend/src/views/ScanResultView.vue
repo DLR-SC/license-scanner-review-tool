@@ -11,6 +11,7 @@ import AppButton from '@/components/AppButton.vue'
 import InfoTooltip from '@/components/InfoTooltip.vue'
 import AppInput from '@/components/AppInput.vue'
 import SpdxInput from '@/components/SpdxInput.vue'
+import { spdxMatchSet } from '@/utils/spdx'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
 import AppPanel from '@/components/AppPanel.vue'
@@ -140,11 +141,11 @@ const LICENSE_FINDING_CURATIONS_REASONS: Option[] = [
  * - 2: Undeclared license — license not present in the package's SPDX expression
  * - 3: Everything else
  */
-function findingTier(f: LicenseFinding, spdx: string): number {
+function findingTier(f: LicenseFinding, licenseSet: Set<string>): number {
   const base = f.location.path.split('/').at(-1)?.toLowerCase() ?? ''
   if (base.endsWith('.gemspec') || MANIFEST_FILES.has(base)) return 0
   if (LICENSE_FILE_RE.test(base)) return 1
-  if (!spdx.includes(f.license)) return 2
+  if (!licenseSet.has(f.license)) return 2
   return 3
 }
 
@@ -233,19 +234,19 @@ const effectiveSpdxExpression = computed(() => {
 })
 
 const reviewFindings = computed(() => {
-  const spdx = effectiveSpdxExpression.value
+  const licenseSet = spdxMatchSet(effectiveSpdxExpression.value)
   const excludePatterns = currentExcludes.value.map((e) => e.pattern)
   const curationsMap = currentFindingCurationsMap.value
   return allFindings.value
     .filter(
       (f) =>
-        (f.score < 100 || !spdx.includes(f.license)) &&
+        (f.score < 100 || !licenseSet.has(f.license)) &&
         !excludePatterns.some((p) => minimatch(f.location.path, p)) &&
         !curationsMap.has(findingCurationKey(f)),
     )
     .slice()
     .sort((a, b) => {
-      const tierDiff = findingTier(a, spdx) - findingTier(b, spdx)
+      const tierDiff = findingTier(a, licenseSet) - findingTier(b, licenseSet)
       return tierDiff !== 0 ? tierDiff : b.score - a.score
     })
 })
