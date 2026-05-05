@@ -224,8 +224,15 @@ const allFindings = computed(() => currentScanResult.value?.licenses ?? [])
 
 const currentExcludes = computed(() => store.pathExcludes[currentPackage.value?.id ?? ''] ?? [])
 
+const suggestedDeclaredLicense = ref('')
+
+const effectiveSpdxExpression = computed(() => {
+  if (suggestedDeclaredLicense.value) return suggestedDeclaredLicense.value
+  return currentPackage.value?.declaredLicensesProcessed?.spdxExpression ?? ''
+})
+
 const reviewFindings = computed(() => {
-  const spdx = currentPackage.value?.declaredLicensesProcessed?.spdxExpression ?? ''
+  const spdx = effectiveSpdxExpression.value
   const excludePatterns = currentExcludes.value.map((e) => e.pattern)
   const curationsMap = currentFindingCurationsMap.value
   return allFindings.value
@@ -252,10 +259,7 @@ function previewExcludeCount(pattern: string): number {
 
 const hiddenFindings = computed(() =>
   allFindings.value.filter(
-    (f) =>
-      f.score === 100 &&
-      (currentPackage.value?.declaredLicensesProcessed?.spdxExpression?.includes(f.license) ??
-        false),
+    (f) => f.score === 100 && effectiveSpdxExpression.value.includes(f.license),
   ),
 )
 
@@ -513,6 +517,7 @@ watch(currentPackage, (pkg) => {
   showCurationForm.value = false
   showDecisionForm.value = false
   showReviewed.value = false
+  suggestedDeclaredLicense.value = ''
   if (pkg) {
     store.fetchPathExcludes(pkg.id)
     store.fetchCuration(pkg.id)
@@ -833,6 +838,18 @@ watch(
                   Trust declared license
                 </AppButton>
                 <AppButton @click="openCurationForm">Conclude license</AppButton>
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <span class="text-xs text-gray-500 shrink-0"
+                  >Suggested declared license
+                  <InfoTooltip
+                    text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
+                /></span>
+                <AppInput
+                  v-model="suggestedDeclaredLicense"
+                  placeholder="SPDX expression"
+                  class="font-mono w-48"
+                />
               </div>
             </template>
             <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
