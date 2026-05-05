@@ -871,24 +871,24 @@ watch(
               </div>
               <AppCard>
                 <template #title>
-                  <div class="flex items-center gap-3 text-sm">
+                  <div class="flex items-center gap-3 text-sm h-8">
                     <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
                     <span class="text-gray-500"
                       >{{ currentFinding.location.path }}:{{ currentFinding.location.startLine }}–{{
                         currentFinding.location.endLine
                       }}</span
                     >
-                    <AppButton v-if="!showExcludeForm" @click="openExcludeForm"
+                    <AppButton v-if="!showDecisionForm && !showExcludeForm" @click="openExcludeForm"
                       >Exclude path</AppButton
                     >
-                    <template v-if="!showDecisionForm">
+                    <template v-if="!showDecisionForm && !showExcludeForm">
                       <AppButton
                         variant="primary"
                         @click="openDecisionForm(suggestedConcludeLicense)"
                       >
                         Conclude as {{ suggestedConcludeLicense }}
                       </AppButton>
-                      <AppButton @click="openDecisionForm()">Other…</AppButton>
+                      <AppButton @click="openDecisionForm()">Conclude another license</AppButton>
                     </template>
                   </div>
                 </template>
