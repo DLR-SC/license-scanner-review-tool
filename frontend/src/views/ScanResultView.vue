@@ -361,8 +361,7 @@ async function confirmDecisionForm() {
   await store.setFindingCuration(currentPackage.value.id, {
     path: currentFinding.value.location.path,
     startLines: String(currentFinding.value.location.startLine),
-    lineCount:
-      currentFinding.value.location.endLine - currentFinding.value.location.startLine + 1,
+    lineCount: currentFinding.value.location.endLine - currentFinding.value.location.startLine + 1,
     detectedLicense: currentFinding.value.license,
     reason: decisionReason.value,
     comment: decisionComment.value,
@@ -875,9 +874,9 @@ watch(
                   <div class="flex items-center gap-3 text-sm">
                     <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
                     <span class="text-gray-500"
-                      >{{ currentFinding.location.path }}:{{
-                        currentFinding.location.startLine
-                      }}–{{ currentFinding.location.endLine }}</span
+                      >{{ currentFinding.location.path }}:{{ currentFinding.location.startLine }}–{{
+                        currentFinding.location.endLine
+                      }}</span
                     >
                     <AppButton v-if="!showExcludeForm" @click="openExcludeForm"
                       >Exclude path</AppButton
@@ -1030,8 +1029,7 @@ watch(
                   <span class="text-green-700">
                     →
                     {{
-                      currentFindingCurationsMap.get(findingCurationKey(f))?.concludedLicense ??
-                      '?'
+                      currentFindingCurationsMap.get(findingCurationKey(f))?.concludedLicense ?? '?'
                     }}
                   </span>
                   <span
