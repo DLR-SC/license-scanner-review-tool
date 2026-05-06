@@ -877,14 +877,22 @@ watch(
                 v-else
                 class="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded px-3 py-2"
               >
-                Ensure that all licenses included by your review are compatible with the license you
-                are about to conclude. Refer to the
+                Ensure that all licenses included after your review are compatible with the license
+                you are about to conclude. Refer to the
                 <a
                   href="https://www.dlr.de/de/sc/medien/publikationen/broschuere-open-source-software-im-dlr"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="underline font-medium"
                   >DLR Open Source compatibility guide</a
+                >
+                or use a
+                <a
+                  href="https://interoperable-europe.ec.europa.eu/collection/eupl/solution/licensing-assistant/compatibility-checker"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline font-medium"
+                  >license compatibility checker</a
                 >
                 for compatibility analysis.
               </div>
