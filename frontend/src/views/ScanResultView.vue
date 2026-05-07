@@ -846,7 +846,7 @@ watch(
                   currentCuration.comment
                 }}</span>
                 <div class="ml-auto flex items-center gap-1 shrink-0">
-                  <AppButton @click="openCurationForm">Edit</AppButton>
+                  <AppButton variant="primary" @click="openCurationForm">Edit</AppButton>
                   <AppButton
                     variant="danger"
                     class="inline-flex items-center gap-1.5"
@@ -914,7 +914,7 @@ watch(
                   placeholder="Optional"
                   class="flex-1 min-w-0"
                 />
-                <AppButton @click="confirmCuration">Confirm</AppButton>
+                <AppButton variant="primary" @click="confirmCuration">Confirm</AppButton>
                 <AppButton variant="text" @click="showCurationForm = false">Cancel</AppButton>
               </div>
             </template>
@@ -931,6 +931,7 @@ watch(
               <div class="flex items-center gap-2">
                 <AppButton
                   v-if="currentPackage.declaredLicensesProcessed?.spdxExpression"
+                  variant="primary"
                   @click="openTrustForm"
                 >
                   Trust declared license
@@ -1152,7 +1153,10 @@ watch(
                         currentFinding.location.endLine
                       }}</span
                     >
-                    <AppButton v-if="!showDecisionForm && !showExcludeForm" @click="openExcludeForm"
+                    <AppButton
+                      v-if="!showDecisionForm && !showExcludeForm"
+                      variant="primary"
+                      @click="openExcludeForm"
                       >Exclude path</AppButton
                     >
                     <template v-if="!showDecisionForm && !showExcludeForm">
@@ -1162,7 +1166,9 @@ watch(
                       >
                         Conclude as {{ suggestedConcludeLicense }}
                       </AppButton>
-                      <AppButton @click="openDecisionForm()">Conclude another license</AppButton>
+                      <AppButton variant="primary" @click="openDecisionForm()"
+                        >Conclude another license</AppButton
+                      >
                     </template>
                   </div>
                 </template>
@@ -1188,7 +1194,7 @@ watch(
                     placeholder="Optional"
                     class="flex-1 min-w-0"
                   />
-                  <AppButton @click="confirmDecisionForm">Conclude</AppButton>
+                  <AppButton variant="primary" @click="confirmDecisionForm">Conclude</AppButton>
                   <AppButton variant="text" @click="showDecisionForm = false">Cancel</AppButton>
                 </div>
                 <div

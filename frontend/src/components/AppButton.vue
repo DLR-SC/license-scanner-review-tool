@@ -21,10 +21,10 @@ withDefaults(
     class="cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
     :class="{
       'border rounded py-1 px-3 text-sm hover:bg-gray-200': variant === 'default',
-      'border rounded py-1 px-3 text-sm bg-green-50 text-green-700 border-green-300 hover:bg-green-100':
+      'border rounded py-1 px-3 text-sm bg-slate-600 text-white border-slate-700 hover:bg-slate-700':
         variant === 'primary',
       'py-1 px-2 text-sm text-gray-400 hover:text-gray-600': variant === 'text',
-      'border rounded py-1 px-3 text-sm text-red-500 border-red-200 hover:bg-red-50':
+      'border rounded py-1 px-3 text-sm text-red-600 border-red-600 hover:bg-red-50':
         variant === 'danger',
     }"
   >
