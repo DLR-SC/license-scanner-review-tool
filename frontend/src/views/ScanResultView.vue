@@ -810,36 +810,27 @@ watch(
         </div>
 
         <!-- License conclusion panel -->
-        <section
-          class="border-2 rounded-lg overflow-hidden mt-4"
+        <AppPanel
+          :title="
+            currentCuration?.concludedLicense && !showCurationForm
+              ? 'License concluded'
+              : 'Conclude license'
+          "
+          class="border-2"
           :class="
             currentCuration?.concludedLicense && !showCurationForm
               ? 'border-green-400 shadow-sm'
               : 'border-blue-400 shadow-md'
           "
-          aria-labelledby="license-conclusion-heading"
+          :header-class="
+            currentCuration?.concludedLicense && !showCurationForm
+              ? '!bg-green-100'
+              : '!bg-blue-100'
+          "
         >
-          <div
-            class="px-4 py-3 flex items-center gap-2"
-            :class="
-              currentCuration?.concludedLicense && !showCurationForm
-                ? 'bg-green-100'
-                : 'bg-blue-100'
-            "
-          >
-            <CarbonCheckmarkFilled
-              v-if="currentCuration?.concludedLicense && !showCurationForm"
-              class="w-5 h-5 text-green-600"
-              aria-hidden="true"
-            />
-            <h2 id="license-conclusion-heading" class="text-base font-semibold">
-              {{
-                currentCuration?.concludedLicense && !showCurationForm
-                  ? 'License concluded'
-                  : 'Conclude license'
-              }}
-            </h2>
-          </div>
+          <template v-if="currentCuration?.concludedLicense && !showCurationForm" #icon>
+            <CarbonCheckmarkFilled class="w-5 h-5 text-green-600" aria-hidden="true" />
+          </template>
           <div
             class="px-4 py-4 flex flex-col gap-3"
             :class="currentCuration?.concludedLicense && !showCurationForm ? 'bg-green-50' : ''"
@@ -961,13 +952,12 @@ watch(
               </div>
             </template>
           </div>
-        </section>
+        </AppPanel>
 
         <!-- License findings panel -->
         <AppPanel
           title="License findings"
           tooltip="Review the license findings and the dependencies before concluding the license for this package. For each finding you can view the detected license text in context, compare it to a canonical version of the license, and then decide to exclude the file from the scan results or to conclude a specific license for the finding."
-          class="mt-4"
         >
           <div class="px-4 py-3">
             <SpdxInput

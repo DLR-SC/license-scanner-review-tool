@@ -10,15 +10,17 @@ import InfoTooltip from '@/components/InfoTooltip.vue'
 defineProps<{
   title: string
   tooltip?: string
+  headerClass?: string
 }>()
 </script>
 
 <template>
-  <div class="border rounded flex flex-col">
-    <div class="px-4 py-3 bg-gray-100 rounded-t flex items-center gap-2">
+  <section class="border rounded-lg overflow-hidden flex flex-col" :aria-label="title">
+    <div class="px-4 py-3 bg-gray-100 rounded-t flex items-center gap-2" :class="headerClass">
+      <slot name="icon" />
       <h2 class="text-base font-semibold">{{ title }}</h2>
       <InfoTooltip v-if="tooltip" :text="tooltip" />
     </div>
     <slot />
-  </div>
+  </section>
 </template>
