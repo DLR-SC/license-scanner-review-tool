@@ -768,6 +768,10 @@ watch(
                               aria-hidden="true"
                             />
                             {{ dep.id }}
+                            <LicensePill
+                              v-if="store.curations[dep.id]?.concludedLicense"
+                              :license="store.curations[dep.id]?.concludedLicense!"
+                            />
                           </RouterLink>
                         </li>
                       </ul>
