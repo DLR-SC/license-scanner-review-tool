@@ -832,7 +832,7 @@ watch(
             <CarbonCheckmarkFilled class="w-5 h-5 text-green-600" aria-hidden="true" />
           </template>
           <div
-            class="px-4 py-4 flex flex-col gap-3"
+            class="px-4 py-4 flex flex-col gap-3 rounded-b-lg"
             :class="currentCuration?.concludedLicense && !showCurationForm ? 'bg-green-50' : ''"
           >
             <template v-if="currentCuration?.concludedLicense && !showCurationForm">
