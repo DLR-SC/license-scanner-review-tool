@@ -17,6 +17,7 @@ import { spdxMatchSet } from '@/utils/spdx'
 import DescribedSelect from '@/components/DescribedSelect.vue'
 import DependencyGraph from '@/components/DependencyGraph.vue'
 import AppPanel from '@/components/AppPanel.vue'
+import AppNote from '@/components/AppNote.vue'
 import AppCard from '@/components/AppCard.vue'
 import LicensePill from '@/components/LicensePill.vue'
 import { useRoute } from 'vue-router'
@@ -858,17 +859,11 @@ watch(
               </div>
             </template>
             <template v-else-if="showCurationForm">
-              <div
-                v-if="isTrustForm"
-                class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
-              >
+              <AppNote v-if="isTrustForm" variant="warning">
                 Only use this option when you are really confident that the declared license is
                 reliable and correct.
-              </div>
-              <div
-                v-else
-                class="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded px-3 py-2"
-              >
+              </AppNote>
+              <AppNote v-else>
                 Ensure that all licenses included after your review are compatible with the license
                 you are about to conclude. Refer to the
                 <a
@@ -887,7 +882,7 @@ watch(
                   >license compatibility checker</a
                 >
                 for compatibility analysis.
-              </div>
+              </AppNote>
               <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
                 <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
                   Included licenses after review
@@ -976,16 +971,13 @@ watch(
             v-if="allFindings.length"
             class="px-4 py-3 border-t border-gray-100 flex flex-col gap-2"
           >
-            <div
-              v-if="vcsSiblings.length"
-              class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2"
-            >
+            <AppNote v-if="vcsSiblings.length" variant="warning">
               This package originates from the same source repository as other packages in your
               dependencies. Thus the license findings also apply to those packages:
               <span v-for="(sibling, i) in vcsSiblings" :key="sibling" class="font-mono"
                 >{{ shortId(sibling) }}<span v-if="i < vcsSiblings.length - 1">, </span></span
               >.
-            </div>
+            </AppNote>
             <div
               v-if="currentExcludes.length || hiddenByLicense.size || reviewedFindings.length"
               :key="currentPackage?.id"
@@ -1122,9 +1114,10 @@ watch(
                 </table>
               </CollapsiblePanel>
             </div>
-            <div v-if="totalFindings === 0 && allFindings.length" class="text-sm text-gray-500">
+            <AppNote v-if="totalFindings === 0 && allFindings.length" variant="success">
+              <CarbonCheckmarkFilled class="w-5 h-5 text-green-600 shrink-0" aria-hidden="true" />
               No findings need review.
-            </div>
+            </AppNote>
             <template v-else-if="currentFinding">
               <div class="flex items-center justify-between mb-2">
                 <h3 class="text-sm font-medium">
