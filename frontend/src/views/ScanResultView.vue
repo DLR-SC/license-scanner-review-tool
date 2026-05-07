@@ -591,7 +591,7 @@ watch(
 </script>
 
 <template>
-  <main class="p-4 gap-2 flex flex-col">
+  <main class="p-4 gap-4 flex flex-col">
     <div v-if="store.loading">Loading…</div>
     <div v-else-if="store.error" class="text-red-500">Error: {{ store.error }}</div>
 
