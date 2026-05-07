@@ -32,8 +32,8 @@ test('trust form: pre-fills declared SPDX expression and preset comment', async 
   await mockAll(page)
   await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
-  await expect(page.getByPlaceholder('SPDX expression')).toHaveValue('MIT')
-  await expect(page.getByPlaceholder('Comment (optional)').first()).toHaveValue(
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toHaveValue('MIT')
+  await expect(page.getByRole('textbox', { name: 'Comment' })).toHaveValue(
     'Declared license is correct',
   )
 })
@@ -42,8 +42,8 @@ test('conclude license form opens with empty inputs', async ({ page }) => {
   await mockAll(page)
   await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Conclude license' }).click()
-  await expect(page.getByPlaceholder('SPDX expression')).toHaveValue('')
-  await expect(page.getByPlaceholder('Comment (optional)').first()).toHaveValue('')
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toHaveValue('')
+  await expect(page.getByRole('textbox', { name: 'Comment' })).toHaveValue('')
 })
 
 test('confirm: PUT body correct', async ({ page }) => {
@@ -80,22 +80,27 @@ test('confirm: concluded license shown in row after PUT', async ({ page }) => {
   await page.getByRole('button', { name: 'Trust declared license' }).click()
   await page.getByRole('button', { name: 'Confirm', exact: true }).click()
 
-  await expect(page.getByRole('row', { name: /Concluded license/ })).toContainText('MIT')
-  await expect(page.getByPlaceholder('SPDX expression')).toBeHidden()
+  const panel = page.getByRole('region', { name: 'License concluded' })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText('MIT')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toBeHidden()
 })
 
 test('cancel: closes form with no PUT', async ({ page }) => {
   let putCalled = false
   await mockAll(page)
   await page.route('**/license-curations**', (route) => {
-    if (route.request().method() === 'PUT') putCalled = true
-    return route.fulfill({ json: { package_id: PKG1_ID, comment: '', concluded_license: null } })
+    if (route.request().method() === 'PUT') {
+      putCalled = true
+      return route.fulfill({ json: { package_id: PKG1_ID, comment: '', concluded_license: null } })
+    }
+    return route.fallback()
   })
   await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Trust declared license' }).click()
   await page.getByRole('button', { name: 'Cancel' }).click()
 
-  await expect(page.getByPlaceholder('SPDX expression')).toBeHidden()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toBeHidden()
   await page.waitForTimeout(200)
   expect(putCalled).toBe(false)
 })
@@ -109,9 +114,11 @@ test('active curation from GET shown on load', async ({ page }) => {
     },
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await expect(page.getByRole('row', { name: /Concluded license/ })).toContainText('MIT')
-  await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '✕' })).toBeVisible()
+  const panel = page.getByRole('region', { name: 'License concluded' })
+  await expect(panel).toBeVisible()
+  await expect(panel.getByText('MIT')).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Edit' })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Delete' })).toBeVisible()
 })
 
 test('edit pre-fills form with existing curation values', async ({ page }) => {
@@ -124,8 +131,8 @@ test('edit pre-fills form with existing curation values', async ({ page }) => {
   })
   await navigateToPackage(page, PACKAGE_1.purl)
   await page.getByRole('button', { name: 'Edit' }).click()
-  await expect(page.getByPlaceholder('SPDX expression')).toHaveValue('Apache-2.0')
-  await expect(page.getByPlaceholder('Comment (optional)').first()).toHaveValue('my comment')
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toHaveValue('Apache-2.0')
+  await expect(page.getByRole('textbox', { name: 'Comment' })).toHaveValue('my comment')
 })
 
 test('✕ sends DELETE with correct package_id', async ({ page }) => {
@@ -141,7 +148,7 @@ test('✕ sends DELETE with correct package_id', async ({ page }) => {
 
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'DELETE' && r.url().includes('/license-curations')),
-    page.getByRole('button', { name: '✕' }).click(),
+    page.getByRole('button', { name: 'Delete' }).click(),
   ])
 
   const url = new URL(req.url())

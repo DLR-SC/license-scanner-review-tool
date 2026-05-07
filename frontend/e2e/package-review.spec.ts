@@ -19,15 +19,15 @@ import {
 test('initial load: root package list is shown', async ({ page }) => {
   await mockAll(page)
   await page.goto('/')
-  await expect(page.getByRole('button', { name: PKG1_ID })).toBeVisible()
-  await expect(page.getByRole('button', { name: PKG2_ID })).toBeVisible()
+  await expect(page.getByRole('link', { name: PKG1_ID })).toBeVisible()
+  await expect(page.getByRole('link', { name: PKG2_ID })).toBeVisible()
 })
 
 test('clicking root package navigates to its review page', async ({ page }) => {
   await mockAll(page)
   await page.goto('/')
-  await page.getByRole('button', { name: PKG1_ID }).click()
-  await expect(page.getByText(PKG1_ID)).toBeVisible()
+  await page.getByRole('link', { name: PKG1_ID }).click()
+  await expect(page.getByRole('cell', { name: PKG1_ID })).toBeVisible()
   await expect(page.getByText('Lodash modular utilities.')).toBeVisible()
   await expect(page.getByRole('row', { name: /Declared licenses/ })).toContainText('MIT')
   await expect(page).toHaveURL(new RegExp('/review/'))
@@ -36,7 +36,7 @@ test('clicking root package navigates to its review page', async ({ page }) => {
 test('direct URL navigation shows package info', async ({ page }) => {
   await mockAll(page)
   await navigateToPackage(page, PACKAGE_1.purl)
-  await expect(page.getByText(PKG1_ID)).toBeVisible()
+  await expect(page.getByRole('cell', { name: PKG1_ID })).toBeVisible()
   await expect(page.getByText('Lodash modular utilities.')).toBeVisible()
   await expect(page.getByRole('row', { name: /Declared licenses/ })).toContainText('MIT')
 })
@@ -54,10 +54,10 @@ test('breadcrumb shown when navigating to a dependency', async ({ page }) => {
     },
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await page.getByRole('button', { name: PKG2_ID }).click()
+  await page.getByRole('link', { name: PKG2_ID }).click()
   await expect(page.getByRole('cell', { name: PKG2_ID })).toBeVisible()
   // breadcrumb should link back to PKG1
-  await expect(page.getByRole('button', { name: PKG1_ID })).toBeVisible()
+  await expect(page.getByRole('link', { name: PKG1_ID })).toBeVisible()
   expect(page.url()).toContain(PACKAGE_2.purl)
 })
 
@@ -73,8 +73,8 @@ test('breadcrumb click navigates back to parent', async ({ page }) => {
     },
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await page.getByRole('button', { name: PKG2_ID }).click()
-  await page.getByRole('button', { name: PKG1_ID }).click()
+  await page.getByRole('link', { name: PKG2_ID }).click()
+  await page.getByRole('link', { name: PKG1_ID }).click()
   expect(page.url()).not.toContain(PACKAGE_2.purl)
   await expect(page.getByText('Lodash modular utilities.')).toBeVisible()
 })
@@ -91,7 +91,7 @@ const graphWithDep = {
 test('clicking a dependency navigates to its review page', async ({ page }) => {
   await mockAll(page, { dependencyGraph: graphWithDep })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await page.getByRole('button', { name: PKG2_ID }).click()
+  await page.getByRole('link', { name: PKG2_ID }).click()
   await expect(page.getByRole('cell', { name: PKG2_ID })).toBeVisible()
   expect(page.url()).toContain(PACKAGE_1.purl + ';' + PACKAGE_2.purl)
 })
@@ -157,7 +157,7 @@ test('scoped npm dependency: clicking and direct URL navigation work correctly',
 
   // Clicking the dependency from the parent package page
   await navigateToPackage(page, PACKAGE_1.purl)
-  await page.getByRole('button', { name: SCOPED_ID }).click()
+  await page.getByRole('link', { name: SCOPED_ID }).click()
   await expect(page.getByRole('cell', { name: SCOPED_ID })).toBeVisible()
   expect(page.url()).toContain(PACKAGE_1.purl + ';' + SCOPED_PURL)
 })
@@ -169,9 +169,9 @@ test('detected licenses shown in metadata table, deduplicated', async ({ page })
     scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_SOURCE, FINDING_TESTS_INTEGRATION]),
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await expect(page.getByRole('row', { name: /Detected licenses/ })).toContainText(
-    'Apache-2.0, MIT',
-  )
+  const detectedRow = page.getByRole('row', { name: /Detected licenses/ })
+  await expect(detectedRow).toContainText('Apache-2.0')
+  await expect(detectedRow).toContainText('MIT')
 })
 
 test('path excludes fetched when navigating to a package', async ({ page }) => {

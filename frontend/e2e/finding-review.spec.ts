@@ -59,9 +59,9 @@ test.describe('finding navigation', () => {
     })
     await navigateToPackage(page, PACKAGE_1.purl)
     await expect(page.getByText('Finding 1 of 1')).toBeVisible()
-    await expect(page.getByText(/1 finding.*hidden/)).toBeVisible()
+    await expect(page.getByText(/1 hidden finding/)).toBeVisible()
 
-    await page.getByRole('button', { name: 'show' }).click()
+    await page.getByRole('button', { name: /hidden finding/ }).click()
     await expect(page.getByText('src/index.ts', { exact: false })).toBeVisible()
   })
 })
@@ -148,7 +148,7 @@ test.describe('sibling findings', () => {
       scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_TESTS_INTEGRATION]),
     })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('Also in file:')).toBeHidden()
+    await expect(page.getByText('Other license findings in this file:')).toBeHidden()
   })
 
   test('badge shown for review sibling in same file', async ({ page }) => {
@@ -156,8 +156,8 @@ test.describe('sibling findings', () => {
       scanResult: makeScanResult([FINDING_SOURCE, FINDING_SOURCE_SIBLING]),
     })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('Also in file:')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'MIT | 80' })).toBeVisible()
+    await expect(page.getByText('Other license findings in this file:')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'MIT 80' })).toBeVisible()
   })
 
   test('badge click navigates to sibling finding', async ({ page }) => {
@@ -166,7 +166,7 @@ test.describe('sibling findings', () => {
     })
     await navigateToPackage(page, PACKAGE_1.purl)
     await expect(page.getByText('Finding 1 of 2')).toBeVisible()
-    await page.getByRole('button', { name: 'MIT | 80' }).click()
+    await page.getByRole('button', { name: 'MIT 80' }).click()
     await expect(page.getByText('Finding 2 of 2')).toBeVisible()
   })
 
@@ -175,9 +175,9 @@ test.describe('sibling findings', () => {
       scanResult: makeScanResult([FINDING_SOURCE, FINDING_SOURCE_SIBLING]),
     })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await page.getByRole('button', { name: 'MIT | 80' }).click()
+    await page.getByRole('button', { name: 'MIT 80' }).click()
     await expect(page.getByText('Finding 2 of 2')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Apache-2.0 | 95' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Apache-2.0 95' })).toBeVisible()
   })
 
   test('hidden sibling shows disabled badge', async ({ page }) => {
@@ -185,8 +185,8 @@ test.describe('sibling findings', () => {
       scanResult: makeScanResult([FINDING_SOURCE, FINDING_SOURCE_HIDDEN]),
     })
     await navigateToPackage(page, PACKAGE_1.purl)
-    await expect(page.getByText('Also in file:')).toBeVisible()
-    const badge = page.getByRole('button', { name: 'MIT | 100' })
+    await expect(page.getByText('Other license findings in this file:')).toBeVisible()
+    const badge = page.getByRole('button', { name: 'MIT 100' })
     await expect(badge).toBeVisible()
     await expect(badge).toBeDisabled()
   })

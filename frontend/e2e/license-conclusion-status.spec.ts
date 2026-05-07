@@ -30,8 +30,8 @@ test.describe('root package list status dots', () => {
   test('package without curation shows grey dot', async ({ page }) => {
     await mockAll(page, { allLicenseCurations: [] })
     await page.goto('/')
-    const button = page.locator('ul li button').filter({ hasText: PKG1_ID })
-    const dot = button.locator('span[aria-hidden]')
+    const button = page.locator('ul li a').filter({ hasText: PKG1_ID })
+    const dot = button.locator('[aria-hidden="true"]')
     await expect(dot).toHaveClass(/text-gray-300/)
   })
 
@@ -40,8 +40,8 @@ test.describe('root package list status dots', () => {
       allLicenseCurations: [{ package_id: PKG1_ID, comment: '', concluded_license: 'MIT' }],
     })
     await page.goto('/')
-    const button = page.locator('ul li button').filter({ hasText: PKG1_ID })
-    const dot = button.locator('span[aria-hidden]')
+    const button = page.locator('ul li a').filter({ hasText: PKG1_ID })
+    const dot = button.locator('[aria-hidden="true"]')
     await expect(dot).toHaveClass(/text-green-500/)
   })
 
@@ -50,11 +50,11 @@ test.describe('root package list status dots', () => {
       allLicenseCurations: [{ package_id: PKG1_ID, comment: '', concluded_license: 'MIT' }],
     })
     await page.goto('/')
-    const btn1 = page.locator('ul li button').filter({ hasText: PKG1_ID })
-    await expect(btn1.locator('span[aria-hidden]')).toHaveClass(/text-green-500/)
+    const btn1 = page.locator('ul li a').filter({ hasText: PKG1_ID })
+    await expect(btn1.locator('[aria-hidden="true"]')).toHaveClass(/text-green-500/)
 
-    const btn2 = page.locator('ul li button').filter({ hasText: PKG2_ID })
-    await expect(btn2.locator('span[aria-hidden]')).toHaveClass(/text-gray-300/)
+    const btn2 = page.locator('ul li a').filter({ hasText: PKG2_ID })
+    await expect(btn2.locator('[aria-hidden="true"]')).toHaveClass(/text-gray-300/)
   })
 })
 
@@ -66,7 +66,7 @@ test.describe('dependency list status dots', () => {
     })
     await navigateToPackage(page, PACKAGE_1.purl)
     const depRow = page.getByRole('row', { name: /Dependencies/ })
-    const dot = depRow.locator('button').filter({ hasText: PKG2_ID }).locator('span[aria-hidden]')
+    const dot = depRow.locator('a').filter({ hasText: PKG2_ID }).locator('[aria-hidden="true"]')
     await expect(dot).toHaveClass(/text-gray-300/)
   })
 
@@ -77,7 +77,7 @@ test.describe('dependency list status dots', () => {
     })
     await navigateToPackage(page, PACKAGE_1.purl)
     const depRow = page.getByRole('row', { name: /Dependencies/ })
-    const dot = depRow.locator('button').filter({ hasText: PKG2_ID }).locator('span[aria-hidden]')
+    const dot = depRow.locator('a').filter({ hasText: PKG2_ID }).locator('[aria-hidden="true"]')
     await expect(dot).toHaveClass(/text-green-500/)
   })
 })

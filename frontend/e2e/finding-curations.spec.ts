@@ -38,21 +38,21 @@ test('GET fetched on load with correct package_id', async ({ page }) => {
   expect(req.url()).toContain(encodeURIComponent(PKG1_ID))
 })
 
-test('confirm button shows detected license in label', async ({ page }) => {
+test('Conclude as button shows detected license in label', async ({ page }) => {
   await mockAll(page)
   await navigateToPackage(page, PACKAGE_1.purl)
   await expect(
-    page.getByRole('button', { name: `Confirm as ${FINDING_TESTS_UNIT.license}` }),
+    page.getByRole('button', { name: `Conclude as ${FINDING_TESTS_UNIT.license}` }),
   ).toBeVisible()
 })
 
-test('Other… button is visible alongside confirm button', async ({ page }) => {
+test('Conclude another license button is visible alongside confirm button', async ({ page }) => {
   await mockAll(page)
   await navigateToPackage(page, PACKAGE_1.purl)
-  await expect(page.getByRole('button', { name: 'Other…' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Conclude another license' })).toBeVisible()
 })
 
-test('one-click confirm: PUT body contains correct fields', async ({ page }) => {
+test('Conclude as form: PUT body contains correct fields', async ({ page }) => {
   await mockAll(page, {
     onFindingCurationsMutation: (body) => ({
       package_id: PKG1_ID,
@@ -61,9 +61,10 @@ test('one-click confirm: PUT body contains correct fields', async ({ page }) => 
   })
   await navigateToPackage(page, PACKAGE_1.purl)
 
+  await page.getByRole('button', { name: `Conclude as ${FINDING_TESTS_UNIT.license}` }).click()
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'PUT' && r.url().includes('/finding-curations')),
-    page.getByRole('button', { name: `Confirm as ${FINDING_TESTS_UNIT.license}` }).click(),
+    page.getByRole('button', { name: 'Conclude', exact: true }).click(),
   ])
 
   const body = JSON.parse(req.postData() ?? '{}')
@@ -77,7 +78,7 @@ test('one-click confirm: PUT body contains correct fields', async ({ page }) => 
   expect(body.concluded_license).toBe(FINDING_TESTS_UNIT.license)
 })
 
-test('one-click confirm: finding leaves review queue', async ({ page }) => {
+test('Conclude as form: finding leaves review queue', async ({ page }) => {
   await mockAll(page, {
     scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_TESTS_INTEGRATION]),
     onFindingCurationsMutation: (body) => ({
@@ -88,11 +89,12 @@ test('one-click confirm: finding leaves review queue', async ({ page }) => {
   await navigateToPackage(page, PACKAGE_1.purl)
   await expect(page.getByText('Finding 1 of 2')).toBeVisible()
 
-  await page.getByRole('button', { name: `Confirm as ${FINDING_TESTS_UNIT.license}` }).click()
+  await page.getByRole('button', { name: `Conclude as ${FINDING_TESTS_UNIT.license}` }).click()
+  await page.getByRole('button', { name: 'Conclude', exact: true }).click()
   await expect(page.getByText('Finding 1 of 1')).toBeVisible()
 })
 
-test('one-click confirm on last finding: index clamps to show remaining finding', async ({
+test('Conclude another license form: on last finding index clamps to show remaining finding', async ({
   page,
 }) => {
   // FINDING_MANIFEST (package.json, tier 0) sorts before FINDING_TESTS_UNIT (tier 3)
@@ -108,14 +110,15 @@ test('one-click confirm on last finding: index clamps to show remaining finding'
   await page.getByRole('button', { name: 'Next →' }).click()
   await expect(page.getByText('Finding 2 of 2')).toBeVisible()
 
-  await page.getByRole('button', { name: `Confirm as ${FINDING_TESTS_UNIT.license}` }).click()
+  await page.getByRole('button', { name: `Conclude as ${FINDING_TESTS_UNIT.license}` }).click()
+  await page.getByRole('button', { name: 'Conclude', exact: true }).click()
 
   // Index clamps to 0 — FINDING_MANIFEST is the remaining finding
   await expect(page.getByText('Finding 1 of 1')).toBeVisible()
   await expect(page.getByText(FINDING_MANIFEST.location.path, { exact: false })).toBeVisible()
 })
 
-test('one-click confirm: reviewed summary increments', async ({ page }) => {
+test('Conclude as form: reviewed summary increments', async ({ page }) => {
   await mockAll(page, {
     onFindingCurationsMutation: (body) => ({
       package_id: PKG1_ID,
@@ -124,21 +127,22 @@ test('one-click confirm: reviewed summary increments', async ({ page }) => {
   })
   await navigateToPackage(page, PACKAGE_1.purl)
 
-  await page.getByRole('button', { name: `Confirm as ${FINDING_TESTS_UNIT.license}` }).click()
-  await expect(page.getByText(/1 finding.*marked as reviewed/)).toBeVisible()
+  await page.getByRole('button', { name: `Conclude as ${FINDING_TESTS_UNIT.license}` }).click()
+  await page.getByRole('button', { name: 'Conclude', exact: true }).click()
+  await expect(page.getByText(/reviewed finding/)).toBeVisible()
 })
 
-test('Other… form: opens with detected license pre-filled', async ({ page }) => {
+test('Conclude as form: opens with detected license pre-filled', async ({ page }) => {
   await mockAll(page)
   await navigateToPackage(page, PACKAGE_1.purl)
 
-  await page.getByRole('button', { name: 'Other…' }).click()
-  await expect(page.getByPlaceholder('SPDX expression or NONE')).toHaveValue(
+  await page.getByRole('button', { name: `Conclude as ${FINDING_TESTS_UNIT.license}` }).click()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toHaveValue(
     FINDING_TESTS_UNIT.license,
   )
 })
 
-test('Other… form: Cancel closes with no PUT', async ({ page }) => {
+test('Conclude another license form: Cancel closes with no PUT', async ({ page }) => {
   let putCalled = false
   await mockAll(page)
   await page.route('**/finding-curations**', (route) => {
@@ -149,42 +153,16 @@ test('Other… form: Cancel closes with no PUT', async ({ page }) => {
   })
   await navigateToPackage(page, PACKAGE_1.purl)
 
-  await page.getByRole('button', { name: 'Other…' }).click()
-  await expect(page.getByPlaceholder('SPDX expression or NONE')).toBeVisible()
+  await page.getByRole('button', { name: 'Conclude another license' }).click()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toBeVisible()
   await page.getByRole('button', { name: 'Cancel' }).click()
 
-  await expect(page.getByPlaceholder('SPDX expression or NONE')).toBeHidden()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toBeHidden()
   await page.waitForTimeout(200)
   expect(putCalled).toBe(false)
 })
 
-test('Other… form: PUT body reflects edited license, reason, and comment', async ({ page }) => {
-  await mockAll(page, {
-    onFindingCurationsMutation: (body) => ({
-      package_id: PKG1_ID,
-      license_finding_curations: [body],
-    }),
-  })
-  await navigateToPackage(page, PACKAGE_1.purl)
-
-  await page.getByRole('button', { name: 'Other…' }).click()
-  await page.getByPlaceholder('SPDX expression or NONE').fill('Apache-2.0')
-  await page.getByRole('combobox').click()
-  await page.getByRole('option', { name: /DOCUMENTATION_OF/ }).click()
-  await page.getByPlaceholder('Comment (optional)').fill('scanner matched a variable name')
-
-  const [req] = await Promise.all([
-    page.waitForRequest((r) => r.method() === 'PUT' && r.url().includes('/finding-curations')),
-    page.getByRole('button', { name: 'Confirm' }).click(),
-  ])
-
-  const body = JSON.parse(req.postData() ?? '{}')
-  expect(body.concluded_license).toBe('Apache-2.0')
-  expect(body.reason).toBe('DOCUMENTATION_OF')
-  expect(body.comment).toBe('scanner matched a variable name')
-})
-
-test('Other… form: NONE can be submitted as concluded_license (no license present)', async ({
+test('Conclude another license form: PUT body reflects edited license, reason, and comment', async ({
   page,
 }) => {
   await mockAll(page, {
@@ -195,29 +173,57 @@ test('Other… form: NONE can be submitted as concluded_license (no license pres
   })
   await navigateToPackage(page, PACKAGE_1.purl)
 
-  await page.getByRole('button', { name: 'Other…' }).click()
-  await page.getByPlaceholder('SPDX expression or NONE').fill('NONE')
+  await page.getByRole('button', { name: 'Conclude another license' }).click()
+  await page.getByRole('textbox', { name: 'Concluded License' }).fill('Apache-2.0')
+  await page.getByRole('combobox').click()
+  await page.getByRole('option', { name: /DOCUMENTATION_OF/ }).click()
+  await page.getByRole('textbox', { name: 'Comment' }).fill('scanner matched a variable name')
 
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'PUT' && r.url().includes('/finding-curations')),
-    page.getByRole('button', { name: 'Confirm' }).click(),
+    page.getByRole('button', { name: 'Conclude', exact: true }).click(),
+  ])
+
+  const body = JSON.parse(req.postData() ?? '{}')
+  expect(body.concluded_license).toBe('Apache-2.0')
+  expect(body.reason).toBe('DOCUMENTATION_OF')
+  expect(body.comment).toBe('scanner matched a variable name')
+})
+
+test('Conclude another license form: NONE can be submitted as concluded_license (no license present)', async ({
+  page,
+}) => {
+  await mockAll(page, {
+    onFindingCurationsMutation: (body) => ({
+      package_id: PKG1_ID,
+      license_finding_curations: [body],
+    }),
+  })
+  await navigateToPackage(page, PACKAGE_1.purl)
+
+  await page.getByRole('button', { name: 'Conclude another license' }).click()
+  await page.getByRole('textbox', { name: 'Concluded License' }).fill('NONE')
+
+  const [req] = await Promise.all([
+    page.waitForRequest((r) => r.method() === 'PUT' && r.url().includes('/finding-curations')),
+    page.getByRole('button', { name: 'Conclude', exact: true }).click(),
   ])
 
   const body = JSON.parse(req.postData() ?? '{}')
   expect(body.concluded_license).toBe('NONE')
 })
 
-test('Other… form closes when navigating to next finding', async ({ page }) => {
+test('Conclude another license form closes when navigating to next finding', async ({ page }) => {
   await mockAll(page, {
     scanResult: makeScanResult([FINDING_TESTS_UNIT, FINDING_TESTS_INTEGRATION]),
   })
   await navigateToPackage(page, PACKAGE_1.purl)
 
-  await page.getByRole('button', { name: 'Other…' }).click()
-  await expect(page.getByPlaceholder('SPDX expression or NONE')).toBeVisible()
+  await page.getByRole('button', { name: 'Conclude another license' }).click()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Next →' }).click()
-  await expect(page.getByPlaceholder('SPDX expression or NONE')).toBeHidden()
+  await expect(page.getByRole('textbox', { name: 'Concluded License' })).toBeHidden()
 })
 
 test('active curation from GET: finding excluded from review queue', async ({ page }) => {
@@ -236,7 +242,7 @@ test('active curation from GET: reviewed summary shown', async ({ page }) => {
     findingCurations: [CURATION_TESTS_UNIT],
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await expect(page.getByText(/1 finding.*marked as reviewed/)).toBeVisible()
+  await expect(page.getByText(/reviewed finding/)).toBeVisible()
 })
 
 test('show reviewed: concluded license displayed in list', async ({ page }) => {
@@ -246,11 +252,14 @@ test('show reviewed: concluded license displayed in list', async ({ page }) => {
   })
   await navigateToPackage(page, PACKAGE_1.purl)
 
-  await page.getByRole('button', { name: 'show' }).click()
-  await expect(page.getByText(FINDING_TESTS_UNIT.location.path, { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: /reviewed finding/ }).click()
+  const table = page.getByRole('table', { name: 'Reviewed findings' })
+  await expect(table.getByRole('cell', { name: 'MIT 90' })).toBeVisible()
   await expect(
-    page.getByText(`→ ${CURATION_TESTS_UNIT.concluded_license}`, { exact: false }),
+    table.getByRole('cell', { name: FINDING_TESTS_UNIT.location.path, exact: false }),
   ).toBeVisible()
+  await expect(table.getByRole('cell', { name: 'MIT', exact: true })).toBeVisible()
+  await expect(table.getByRole('button', { name: 'Remove finding conclusion' })).toBeVisible()
 })
 
 test('remove curation: DELETE sent with correct query params', async ({ page }) => {
@@ -263,11 +272,11 @@ test('remove curation: DELETE sent with correct query params', async ({ page }) 
     }),
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await page.getByRole('button', { name: 'show' }).click()
+  await page.getByRole('button', { name: /reviewed finding/ }).click()
 
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'DELETE' && r.url().includes('/finding-curations')),
-    page.getByRole('button', { name: '✕' }).click(),
+    page.getByRole('button', { name: 'Remove finding conclusion' }).click(),
   ])
 
   const url = new URL(req.url())
@@ -289,8 +298,8 @@ test('remove curation: finding returns to review queue', async ({ page }) => {
   await navigateToPackage(page, PACKAGE_1.purl)
   await expect(page.getByText('Finding 1 of 1')).toBeVisible()
 
-  await page.getByRole('button', { name: 'show' }).click()
-  await page.getByRole('button', { name: '✕' }).click()
+  await page.getByRole('button', { name: /reviewed finding/ }).click()
+  await page.getByRole('button', { name: 'Remove finding conclusion' }).click()
 
   await expect(page.getByText('Finding 1 of 2')).toBeVisible()
 })

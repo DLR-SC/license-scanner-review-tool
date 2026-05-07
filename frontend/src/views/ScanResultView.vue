@@ -810,13 +810,14 @@ watch(
         </div>
 
         <!-- License conclusion panel -->
-        <div
+        <section
           class="border-2 rounded-lg overflow-hidden mt-4"
           :class="
             currentCuration?.concludedLicense && !showCurationForm
               ? 'border-green-400 shadow-sm'
               : 'border-blue-400 shadow-md'
           "
+          aria-labelledby="license-conclusion-heading"
         >
           <div
             class="px-4 py-3 flex items-center gap-2"
@@ -831,7 +832,7 @@ watch(
               class="w-5 h-5 text-green-600"
               aria-hidden="true"
             />
-            <h2 class="text-base font-semibold">
+            <h2 id="license-conclusion-heading" class="text-base font-semibold">
               {{
                 currentCuration?.concludedLicense && !showCurationForm
                   ? 'License concluded'
@@ -912,7 +913,7 @@ watch(
               <div class="flex flex-wrap gap-2 items-end">
                 <SpdxInput
                   v-model="curationLicense"
-                  label="License"
+                  label="Concluded License"
                   placeholder="SPDX expression"
                   class="flex-1 min-w-0"
                 />
@@ -960,7 +961,7 @@ watch(
               </div>
             </template>
           </div>
-        </div>
+        </section>
 
         <!-- License findings panel -->
         <AppPanel
@@ -1033,7 +1034,7 @@ watch(
                         <LicensePill :license="f.license" :score="f.score" />
                       </td>
                       <td class="px-3 py-2 font-mono text-gray-500">
-                        {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
+                        {{ f.location.path }}:{{ f.location.startLine }}-{{ f.location.endLine }}
                       </td>
                     </tr>
                   </tbody>
@@ -1055,7 +1056,7 @@ watch(
                     </span></span
                   >
                 </template>
-                <table class="w-full text-sm">
+                <table class="w-full text-sm" aria-label="Reviewed findings">
                   <thead class="bg-gray-50 border-b text-xs text-gray-400">
                     <tr>
                       <th class="px-3 py-1.5 text-left font-medium">License finding</th>
@@ -1071,7 +1072,7 @@ watch(
                         <LicensePill :license="f.license" :score="f.score" />
                       </td>
                       <td class="px-3 py-2 font-mono text-gray-500">
-                        {{ f.location.path }}:{{ f.location.startLine }}–{{ f.location.endLine }}
+                        {{ f.location.path }}:{{ f.location.startLine }}-{{ f.location.endLine }}
                       </td>
                       <td class="px-3 py-2 text-green-700">
                         {{
@@ -1157,7 +1158,7 @@ watch(
                   <div class="flex items-center gap-3 text-sm h-8">
                     <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
                     <span class="text-gray-500"
-                      >{{ currentFinding.location.path }}:{{ currentFinding.location.startLine }}–{{
+                      >{{ currentFinding.location.path }}:{{ currentFinding.location.startLine }}-{{
                         currentFinding.location.endLine
                       }}</span
                     >
@@ -1181,7 +1182,7 @@ watch(
                 >
                   <SpdxInput
                     v-model="decisionLicense"
-                    label="License"
+                    label="Concluded License"
                     placeholder="SPDX expression or NONE"
                     class="flex-1 min-w-0"
                     allow-none

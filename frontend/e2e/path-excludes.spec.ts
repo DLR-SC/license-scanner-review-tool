@@ -26,7 +26,7 @@ test('exclude form: open shows controls; Cancel closes with no PUT', async ({ pa
   await expect(page.getByRole('button', { name: 'Exclude path' })).toBeVisible()
   await page.getByRole('button', { name: 'Exclude path' }).click()
   await expect(page.getByRole('combobox').first()).toBeVisible()
-  await expect(page.getByPlaceholder('Comment (optional)')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Comment' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('combobox').first()).toBeHidden()
@@ -42,11 +42,10 @@ test('exclude form: path select contains hierarchy options', async ({ page }) =>
   await page.getByRole('button', { name: 'Exclude path' }).click()
   const select = page.getByRole('combobox').first()
   await expect(select).toBeVisible()
-  await expect(select.locator('option')).toHaveText([
-    'tests/**',
-    'tests/unit/**',
-    'tests/unit/foo.ts',
-  ])
+  await select.click()
+  await expect(page.getByRole('option', { name: 'tests/**' })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'tests/unit/**' })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'tests/unit/foo.ts' })).toBeVisible()
 })
 
 test('exclude form preview: −N shown and updates reactively with path selection', async ({
@@ -61,11 +60,13 @@ test('exclude form preview: −N shown and updates reactively with path selectio
   await page.getByRole('button', { name: 'Exclude path' }).click()
   const patternSelect = page.getByRole('combobox').first()
 
-  await patternSelect.selectOption('tests/**')
+  await patternSelect.click()
+  await page.getByRole('option', { name: 'tests/**' }).click()
   await expect(page.getByText('−2')).toBeVisible()
 
   // Narrower pattern → only FINDING_TESTS_UNIT matches → −1
-  await patternSelect.selectOption('tests/unit/**')
+  await patternSelect.click()
+  await page.getByRole('option', { name: 'tests/unit/**' }).click()
   await expect(page.getByText('−1')).toBeVisible()
 })
 
@@ -83,7 +84,8 @@ test('exclude form submit: PUT body correct, form closes', async ({ page }) => {
   // FINDING_MANIFEST (package.json) sorts first (tier 0); navigate to finding 2 (tests/unit/foo.ts)
   await page.getByRole('button', { name: 'Next →' }).click()
   await page.getByRole('button', { name: 'Exclude path' }).click()
-  await page.getByRole('combobox').first().selectOption('tests/**')
+  await page.getByRole('combobox').first().click()
+  await page.getByRole('option', { name: 'tests/**' }).click()
 
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'PUT' && r.url().includes('/path-excludes')),
@@ -116,11 +118,12 @@ test('remove path exclude: DELETE sent with correct params', async ({ page }) =>
     onPathExcludesMutation: () => ({ package_id: PKG1_ID, path_excludes: [] }),
   })
   await navigateToPackage(page, PACKAGE_1.purl)
-  await expect(page.getByText('[tests/**]', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: /path exclude/ }).click()
+  await expect(page.getByText('tests/**', { exact: false })).toBeVisible()
 
   const [req] = await Promise.all([
     page.waitForRequest((r) => r.method() === 'DELETE' && r.url().includes('/path-excludes')),
-    page.getByRole('button', { name: '✕' }).click(),
+    page.getByRole('button', { name: 'Remove path exclude' }).click(),
   ])
 
   const url = new URL(req.url())
@@ -143,7 +146,8 @@ test('exclude on last finding: index clamps to show remaining finding', async ({
   await expect(page.getByText('Finding 2 of 2')).toBeVisible()
 
   await page.getByRole('button', { name: 'Exclude path' }).click()
-  await page.getByRole('combobox').first().selectOption('tests/**')
+  await page.getByRole('combobox').first().click()
+  await page.getByRole('option', { name: 'tests/**' }).click()
   await page.getByRole('button', { name: 'Confirm', exact: true }).click()
 
   // Index clamps to 0 — FINDING_MANIFEST is the remaining finding
