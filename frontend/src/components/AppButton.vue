@@ -23,7 +23,7 @@ withDefaults(
       'border rounded py-1 px-3 text-sm hover:bg-gray-200': variant === 'default',
       'border rounded py-1 px-3 text-sm bg-slate-600 text-white border-slate-700 hover:bg-slate-700':
         variant === 'primary',
-      'py-1 px-2 text-sm text-gray-400 hover:text-gray-600': variant === 'text',
+      'py-1 px-2 text-sm text-gray-500 hover:text-gray-600': variant === 'text',
       'border rounded py-1 px-3 text-sm text-red-600 border-red-600 hover:bg-red-50':
         variant === 'danger',
     }"

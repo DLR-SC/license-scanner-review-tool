@@ -993,10 +993,10 @@ watch(
             >
               <CollapsiblePanel v-if="hiddenByLicense.size">
                 <template #summary>
-                  <span class="text-gray-600"
+                  <span class="text-gray-700"
                     >{{ hiddenFindings.length }} hidden finding{{
                       hiddenFindings.length === 1 ? '' : 's'
-                    }}<span class="text-gray-400">
+                    }}<span class="text-gray-500">
                       ·
                       {{
                         Array.from(hiddenByLicense)
@@ -1010,7 +1010,7 @@ watch(
                   />
                 </template>
                 <table class="w-full text-sm">
-                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                  <thead class="bg-gray-50 border-b border-gray-200 text-xs text-gray-600">
                     <tr>
                       <th class="px-3 py-1.5 text-left font-medium">License finding</th>
                       <th class="px-3 py-1.5 text-left font-medium">Location</th>
@@ -1034,10 +1034,10 @@ watch(
 
               <CollapsiblePanel v-if="reviewedFindings.length">
                 <template #summary>
-                  <span class="text-gray-600"
+                  <span class="text-gray-700"
                     >{{ reviewedFindings.length }} reviewed finding{{
                       reviewedFindings.length === 1 ? '' : 's'
-                    }}<span class="text-gray-400">
+                    }}<span class="text-gray-500">
                       ·
                       {{
                         Array.from(reviewedByLicense)
@@ -1048,7 +1048,7 @@ watch(
                   >
                 </template>
                 <table class="w-full text-sm" aria-label="Reviewed findings">
-                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                  <thead class="bg-gray-50 border-b border-gray-200 text-xs text-gray-600">
                     <tr>
                       <th class="px-3 py-1.5 text-left font-medium">License finding</th>
                       <th class="px-3 py-1.5 text-left font-medium">Location</th>
@@ -1090,14 +1090,14 @@ watch(
 
               <CollapsiblePanel v-if="currentExcludes.length">
                 <template #summary>
-                  <span class="text-gray-600"
+                  <span class="text-gray-700"
                     >{{ currentExcludes.length }} path exclude{{
                       currentExcludes.length === 1 ? '' : 's'
                     }}</span
                   >
                 </template>
                 <table class="w-full text-sm">
-                  <thead class="bg-gray-50 border-b text-xs text-gray-400">
+                  <thead class="bg-gray-50 border-b border-gray-200 text-xs text-gray-600">
                     <tr>
                       <th class="px-3 py-1.5 text-left font-medium">Path Pattern</th>
                       <th class="px-3 py-1.5 text-left font-medium">Reason</th>
@@ -1107,7 +1107,7 @@ watch(
                   <tbody class="divide-y divide-gray-100">
                     <tr v-for="exc in currentExcludes" :key="exc.pattern">
                       <td class="px-3 py-2 font-mono text-gray-700">{{ exc.pattern }}</td>
-                      <td class="px-3 py-2 text-gray-400">{{ exc.reason }}</td>
+                      <td class="px-3 py-2 text-gray-500">{{ exc.reason }}</td>
                       <td class="px-3 py-2 text-right">
                         <AppButton
                           variant="danger"

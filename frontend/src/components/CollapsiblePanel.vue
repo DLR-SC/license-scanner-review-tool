@@ -29,7 +29,7 @@ const open = ref(false)
         :class="open ? 'rotate-180' : ''"
       />
     </div>
-    <div v-if="open" class="border-t">
+    <div v-if="open" class="border-t border-gray-200">
       <slot />
     </div>
   </div>
