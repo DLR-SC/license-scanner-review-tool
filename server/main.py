@@ -14,8 +14,9 @@ from typing import Any
 
 import httpx
 import yaml
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=_unique_id)
+api_router = APIRouter()
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,10 +43,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SCAN_RESULT_PATH = Path(__file__).parent / "ort-out" / "scan-result.yml"
-ORT_OUT_PATH = Path(__file__).parent / "ort-out"
-PKG_CONFIG_PATH = Path(__file__).parent / "ort-out" / "package-configurations.yml"
-CURATIONS_PATH = Path(__file__).parent / "ort-out" / "curations.yml"
+ORT_OUT_PATH = Path(os.environ.get("ORT_OUT_PATH", Path(__file__).parent / "ort-out"))
+SCAN_RESULT_PATH = ORT_OUT_PATH / "scan-result.yml"
+PKG_CONFIG_PATH = ORT_OUT_PATH / "package-configurations.yml"
+CURATIONS_PATH = ORT_OUT_PATH / "curations.yml"
 
 _scan_data: dict | None = None
 
@@ -350,7 +352,7 @@ def _resolve_file_via_vcs_sibling(package_id: str, path: str) -> Path | None:
     return candidate if candidate.is_file() else None
 
 
-@app.get("/file-content", response_model=FileContent)
+@api_router.get("/file-content", response_model=FileContent)
 def get_file_content(
     package_id: str,
     path: str,
@@ -385,7 +387,7 @@ class DownloadStats(BaseModel):
     weekly_downloads: int | None
 
 
-@app.get("/downloads", response_model=DownloadStats)
+@api_router.get("/downloads", response_model=DownloadStats)
 async def get_downloads(purl: str):
     async with httpx.AsyncClient() as client:
         if purl.startswith("pkg:npm/"):
@@ -421,7 +423,7 @@ class GitHubStars(BaseModel):
     stars: int | None
 
 
-@app.get("/github-stars", response_model=GitHubStars)
+@api_router.get("/github-stars", response_model=GitHubStars)
 async def get_github_stars(url: str):
     m = re.search(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?$", url)
     if not m:
@@ -472,7 +474,7 @@ class LicenseText(BaseModel):
     text: str | None
 
 
-@app.get("/license-text", response_model=LicenseText)
+@api_router.get("/license-text", response_model=LicenseText)
 async def get_license_text(license: str):
     if not SPDX_ID_RE.match(license):
         return LicenseText(text=None)
@@ -519,7 +521,7 @@ class DependencyGraph(BaseModel):
     scopes: dict[str, list[DependencyGraphScopeEntry]] = {}
 
 
-@app.get("/dependency-graph")
+@api_router.get("/dependency-graph")
 def get_dependency_graph() -> dict[str, DependencyGraph]:
     if _scan_data is None:
         raise HTTPException(
@@ -529,7 +531,7 @@ def get_dependency_graph() -> dict[str, DependencyGraph]:
     return {k: DependencyGraph.model_validate(v) for k, v in raw.items()}
 
 
-@app.get("/scan-result", response_model=OrtResult)
+@api_router.get("/scan-result", response_model=OrtResult)
 def get_scan_result():
     if _scan_data is None:
         raise HTTPException(
@@ -647,7 +649,7 @@ def get_scan_result():
     )
 
 
-@app.get("/path-excludes", response_model=PackagePathExcludes)
+@api_router.get("/path-excludes", response_model=PackagePathExcludes)
 def get_path_excludes(package_id: str):
     configs = _read_pkg_configs()
     entry = next((c for c in configs if c.get("id") == package_id), None)
@@ -687,7 +689,7 @@ def _delete_path_exclude(
     return entry
 
 
-@app.put("/path-excludes", response_model=PackagePathExcludes)
+@api_router.put("/path-excludes", response_model=PackagePathExcludes)
 def add_path_exclude(req: AddPathExcludeRequest):
     configs = _read_pkg_configs()
     exclude = {"pattern": req.pattern, "reason": req.reason, "comment": req.comment}
@@ -701,7 +703,7 @@ def add_path_exclude(req: AddPathExcludeRequest):
     )
 
 
-@app.delete("/path-excludes", response_model=PackagePathExcludes)
+@api_router.delete("/path-excludes", response_model=PackagePathExcludes)
 def remove_path_exclude(package_id: str, pattern: str):
     configs = _read_pkg_configs()
     entry = _delete_path_exclude(configs, package_id, pattern)
@@ -716,7 +718,7 @@ def remove_path_exclude(package_id: str, pattern: str):
     )
 
 
-@app.get("/license-curations", response_model=PackageCuration)
+@api_router.get("/license-curations", response_model=PackageCuration)
 def get_license_curation(package_id: str):
     curations = _read_curations()
     entry = next((c for c in curations if c.get("id") == package_id), None)
@@ -730,7 +732,7 @@ def get_license_curation(package_id: str):
     )
 
 
-@app.put("/license-curations", response_model=PackageCuration)
+@api_router.put("/license-curations", response_model=PackageCuration)
 def set_license_curation(req: SetCurationRequest):
     curations = _read_curations()
     entry = next((c for c in curations if c.get("id") == req.package_id), None)
@@ -749,7 +751,7 @@ def set_license_curation(req: SetCurationRequest):
     )
 
 
-@app.delete("/license-curations", response_model=PackageCuration)
+@api_router.delete("/license-curations", response_model=PackageCuration)
 def remove_license_curation(package_id: str):
     curations = _read_curations()
     curations = [c for c in curations if c.get("id") != package_id]
@@ -757,7 +759,7 @@ def remove_license_curation(package_id: str):
     return PackageCuration(package_id=package_id)
 
 
-@app.get("/license-curations/all", response_model=list[PackageCuration])
+@api_router.get("/license-curations/all", response_model=list[PackageCuration])
 def get_all_license_curations():
     curations = _read_curations()
     return [
@@ -785,7 +787,7 @@ def _parse_finding_curations(entry: dict) -> list[LicenseFindingCuration]:
     ]
 
 
-@app.get("/finding-curations", response_model=PackageFindingCurations)
+@api_router.get("/finding-curations", response_model=PackageFindingCurations)
 def get_finding_curations(package_id: str):
     configs = _read_pkg_configs()
     entry = next((c for c in configs if c.get("id") == package_id), None)
@@ -846,7 +848,7 @@ def _delete_finding_curation(
     return entry
 
 
-@app.put("/finding-curations", response_model=PackageFindingCurations)
+@api_router.put("/finding-curations", response_model=PackageFindingCurations)
 def set_finding_curation(req: SetFindingCurationRequest):
     configs = _read_pkg_configs()
     finding = {
@@ -868,7 +870,7 @@ def set_finding_curation(req: SetFindingCurationRequest):
     )
 
 
-@app.delete("/finding-curations", response_model=PackageFindingCurations)
+@api_router.delete("/finding-curations", response_model=PackageFindingCurations)
 def remove_finding_curation(
     package_id: str, path: str, start_lines: str, detected_license: str
 ):
@@ -889,3 +891,18 @@ def remove_finding_curation(
         package_id=package_id,
         license_finding_curations=_parse_finding_curations(entry),
     )
+
+
+app.include_router(api_router, prefix="/api/v1")
+
+
+FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST", ""))
+
+if FRONTEND_DIST and FRONTEND_DIST.exists():
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def _serve_frontend(full_path: str):
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")

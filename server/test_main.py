@@ -28,7 +28,7 @@ def test_github_stars_returns_star_count(httpx_mock: HTTPXMock):
         json={"stargazers_count": 42},
     )
 
-    response = client.get("/github-stars?url=https://github.com/owner/repo")
+    response = client.get("/api/v1/github-stars?url=https://github.com/owner/repo")
 
     assert response.status_code == 200
     assert response.json() == {"stars": 42}
@@ -38,7 +38,7 @@ def test_github_stars_returns_star_count(httpx_mock: HTTPXMock):
 
 
 def test_github_stars_non_github_url_returns_none():
-    response = client.get("/github-stars?url=https://gitlab.com/owner/repo")
+    response = client.get("/api/v1/github-stars?url=https://gitlab.com/owner/repo")
 
     assert response.status_code == 200
     assert response.json() == {"stars": None}
@@ -50,7 +50,7 @@ def test_github_stars_api_error_returns_none(httpx_mock: HTTPXMock):
         status_code=404,
     )
 
-    response = client.get("/github-stars?url=https://github.com/owner/repo")
+    response = client.get("/api/v1/github-stars?url=https://github.com/owner/repo")
 
     assert response.status_code == 200
     assert response.json() == {"stars": None}
@@ -62,7 +62,7 @@ def test_github_stars_git_suffix_stripped(httpx_mock: HTTPXMock):
         json={"stargazers_count": 7},
     )
 
-    response = client.get("/github-stars?url=https://github.com/owner/repo.git")
+    response = client.get("/api/v1/github-stars?url=https://github.com/owner/repo.git")
 
     assert response.status_code == 200
     assert response.json() == {"stars": 7}
@@ -75,8 +75,8 @@ def test_github_stars_cached_on_second_call(httpx_mock: HTTPXMock):
         json={"stargazers_count": 10},
     )
 
-    client.get("/github-stars?url=https://github.com/owner/repo")
-    response = client.get("/github-stars?url=https://github.com/owner/repo")
+    client.get("/api/v1/github-stars?url=https://github.com/owner/repo")
+    response = client.get("/api/v1/github-stars?url=https://github.com/owner/repo")
 
     assert response.json() == {"stars": 10}
     assert len(httpx_mock.get_requests()) == 1
@@ -91,7 +91,7 @@ def test_downloads_npm_returns_weekly_count(httpx_mock: HTTPXMock):
         json={"downloads": 5_000_000},
     )
 
-    response = client.get("/downloads?purl=pkg:npm/lodash%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:npm/lodash%401.0.0")
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": 5_000_000}
@@ -106,7 +106,7 @@ def test_downloads_npm_scoped_package(httpx_mock: HTTPXMock):
         json={"downloads": 100},
     )
 
-    response = client.get("/downloads?purl=pkg:npm/%40scope%2Fpkg%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:npm/%40scope%2Fpkg%401.0.0")
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": 100}
@@ -121,7 +121,7 @@ def test_downloads_npm_api_error_returns_none(httpx_mock: HTTPXMock):
         status_code=404,
     )
 
-    response = client.get("/downloads?purl=pkg:npm/lodash%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:npm/lodash%401.0.0")
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": None}
@@ -133,8 +133,8 @@ def test_downloads_npm_cached_on_second_call(httpx_mock: HTTPXMock):
         json={"downloads": 99},
     )
 
-    client.get("/downloads?purl=pkg:npm/lodash%401.0.0")
-    response = client.get("/downloads?purl=pkg:npm/lodash%401.0.0")
+    client.get("/api/v1/downloads?purl=pkg:npm/lodash%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:npm/lodash%401.0.0")
 
     assert response.json() == {"weekly_downloads": 99}
     assert len(httpx_mock.get_requests()) == 1
@@ -149,7 +149,7 @@ def test_downloads_pypi_returns_weekly_count(httpx_mock: HTTPXMock):
         json={"data": {"last_week": 10_000_000}},
     )
 
-    response = client.get("/downloads?purl=pkg:pypi/requests%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:pypi/requests%401.0.0")
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": 10_000_000}
@@ -164,7 +164,7 @@ def test_downloads_pypi_api_error_returns_none(httpx_mock: HTTPXMock):
         status_code=500,
     )
 
-    response = client.get("/downloads?purl=pkg:pypi/requests%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:pypi/requests%401.0.0")
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": None}
@@ -176,8 +176,8 @@ def test_downloads_pypi_cached_on_second_call(httpx_mock: HTTPXMock):
         json={"data": {"last_week": 42}},
     )
 
-    client.get("/downloads?purl=pkg:pypi/requests%401.0.0")
-    response = client.get("/downloads?purl=pkg:pypi/requests%401.0.0")
+    client.get("/api/v1/downloads?purl=pkg:pypi/requests%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:pypi/requests%401.0.0")
 
     assert response.json() == {"weekly_downloads": 42}
     assert len(httpx_mock.get_requests()) == 1
@@ -187,7 +187,7 @@ def test_downloads_pypi_cached_on_second_call(httpx_mock: HTTPXMock):
 
 
 def test_downloads_unknown_purl_returns_none():
-    response = client.get("/downloads?purl=pkg:maven/com.example/foo%401.0.0")
+    response = client.get("/api/v1/downloads?purl=pkg:maven/com.example/foo%401.0.0")
 
     assert response.status_code == 200
     assert response.json() == {"weekly_downloads": None}
@@ -227,7 +227,7 @@ def test_scan_result_missing_file(tmp_path):
     main_module.SCAN_RESULT_PATH = tmp_path / "nonexistent.yml"
     main_module._scan_data = None
     try:
-        response = client.get("/scan-result")
+        response = client.get("/api/v1/scan-result")
         assert response.status_code == 404
     finally:
         main_module.SCAN_RESULT_PATH = original_path
@@ -237,7 +237,7 @@ def test_scan_result_missing_file(tmp_path):
 def test_scan_result_empty(scan_result_file):
     scan_result_file(BASE)
 
-    response = client.get("/scan-result")
+    response = client.get("/api/v1/scan-result")
 
     assert response.status_code == 200
     body = response.json()
@@ -277,7 +277,7 @@ def test_scan_result_package_fields(scan_result_file):
     }
     scan_result_file(data)
 
-    response = client.get("/scan-result")
+    response = client.get("/api/v1/scan-result")
 
     assert response.status_code == 200
     pkg = response.json()["packages"][0]
@@ -339,7 +339,7 @@ def test_scan_result_vcs_provenance_linked(scan_result_file):
     }
     scan_result_file(data)
 
-    response = client.get("/scan-result")
+    response = client.get("/api/v1/scan-result")
 
     assert response.status_code == 200
     body = response.json()
@@ -395,7 +395,7 @@ def test_scan_result_source_artifact_provenance_linked(scan_result_file):
     }
     scan_result_file(data)
 
-    response = client.get("/scan-result")
+    response = client.get("/api/v1/scan-result")
 
     assert response.status_code == 200
     body = response.json()
@@ -448,7 +448,7 @@ def test_scan_result_vcs_siblings(scan_result_file):
     }
     scan_result_file(data)
 
-    response = client.get("/scan-result")
+    response = client.get("/api/v1/scan-result")
 
     assert response.status_code == 200
     body = response.json()
@@ -501,7 +501,7 @@ def test_scan_result_unmatched_provenance(scan_result_file):
     }
     scan_result_file(data)
 
-    response = client.get("/scan-result")
+    response = client.get("/api/v1/scan-result")
 
     assert response.status_code == 200
     assert response.json()["scan_results"] == []
@@ -537,7 +537,7 @@ def file_content_dir(tmp_path):
 
 def test_file_content_bad_package_id():
     response = client.get(
-        "/file-content?package_id=NPM:lodash&path=LICENSE&start_line=1&end_line=1"
+        "/api/v1/file-content?package_id=NPM:lodash&path=LICENSE&start_line=1&end_line=1"
     )
     assert response.status_code == 200
     assert response.json() == {"lines": None, "total_lines": 0}
@@ -548,7 +548,7 @@ def test_file_content_missing_package_dir(tmp_path):
     main_module.ORT_OUT_PATH = tmp_path
     try:
         response = client.get(
-            "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
+            "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
         )
         assert response.status_code == 200
         assert response.json() == {"lines": None, "total_lines": 0}
@@ -559,7 +559,7 @@ def test_file_content_missing_package_dir(tmp_path):
 def test_file_content_missing_file(file_content_dir):
     file_content_dir("NPM::lodash:4.0.0", "README.md", "hello")
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
+        "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1"
     )
     assert response.status_code == 200
     assert response.json() == {"lines": None, "total_lines": 0}
@@ -569,7 +569,7 @@ def test_file_content_returns_lines(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 6))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=2&end_line=3&context_before=0&context_after=0"
+        "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=2&end_line=3&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -582,7 +582,7 @@ def test_file_content_default_context(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 11))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=5&end_line=5"
+        "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=5&end_line=5"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -598,7 +598,7 @@ def test_file_content_context_clamped_at_start(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 4))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context_before=10&context_after=10"
+        "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context_before=10&context_after=10"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -613,7 +613,7 @@ def test_file_content_context_clamped_at_end(file_content_dir):
     content = "\n".join(f"line{i}" for i in range(1, 4))
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", content)
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=3&end_line=3&context_before=10&context_after=10"
+        "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=3&end_line=3&context_before=10&context_after=10"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -627,7 +627,7 @@ def test_file_content_context_clamped_at_end(file_content_dir):
 def test_file_content_empty_namespace(file_content_dir):
     file_content_dir("PyPI::requests:2.0", "LICENSE", "MIT License")
     response = client.get(
-        "/file-content?package_id=PyPI::requests:2.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
+        "/api/v1/file-content?package_id=PyPI::requests:2.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -638,7 +638,7 @@ def test_file_content_empty_namespace(file_content_dir):
 def test_file_content_scoped_npm_package(file_content_dir):
     file_content_dir("NPM:@babel:helper-string-parser:7.27.1", "LICENSE", "MIT License")
     response = client.get(
-        "/file-content?package_id=NPM:%40babel:helper-string-parser:7.27.1&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
+        "/api/v1/file-content?package_id=NPM:%40babel:helper-string-parser:7.27.1&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -649,7 +649,7 @@ def test_file_content_scoped_npm_package(file_content_dir):
 def test_file_content_empty_file(file_content_dir):
     file_content_dir("NPM::lodash:4.0.0", "LICENSE", "")
     response = client.get(
-        "/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
+        "/api/v1/file-content?package_id=NPM::lodash:4.0.0&path=LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     assert response.json() == {"lines": [], "total_lines": 0}
@@ -722,7 +722,7 @@ def test_file_content_vcs_sibling_fallback(file_content_dir, scan_result_file):
     )
 
     response = client.get(
-        "/file-content?package_id=NPM::pkg-a:1.0.0&path=packages/utils/LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
+        "/api/v1/file-content?package_id=NPM::pkg-a:1.0.0&path=packages/utils/LICENSE&start_line=1&end_line=1&context_before=0&context_after=0"
     )
     assert response.status_code == 200
     lines = response.json()["lines"]
@@ -763,7 +763,7 @@ def test_license_text_returns_text(httpx_mock: HTTPXMock):
         text="MIT License\n\nPermission is hereby granted...",
     )
 
-    response = client.get("/license-text?license=MIT")
+    response = client.get("/api/v1/license-text?license=MIT")
 
     assert response.status_code == 200
     assert response.json() == {"text": "MIT License\n\nPermission is hereby granted..."}
@@ -776,7 +776,7 @@ def test_license_text_unknown_license_returns_none(httpx_mock: HTTPXMock):
         json=INDEX_EMPTY,
     )
 
-    response = client.get("/license-text?license=NOT-A-LICENSE")
+    response = client.get("/api/v1/license-text?license=NOT-A-LICENSE")
 
     assert response.status_code == 200
     assert response.json() == {"text": None}
@@ -784,7 +784,7 @@ def test_license_text_unknown_license_returns_none(httpx_mock: HTTPXMock):
 
 
 def test_license_text_invalid_id_returns_none_without_fetching(httpx_mock: HTTPXMock):
-    response = client.get("/license-text?license=../etc/passwd")
+    response = client.get("/api/v1/license-text?license=../etc/passwd")
 
     assert response.status_code == 200
     assert response.json() == {"text": None}
@@ -801,8 +801,8 @@ def test_license_text_cached_on_second_call(httpx_mock: HTTPXMock):
         text="Apache License\nVersion 2.0",
     )
 
-    client.get("/license-text?license=Apache-2.0")
-    response = client.get("/license-text?license=Apache-2.0")
+    client.get("/api/v1/license-text?license=Apache-2.0")
+    response = client.get("/api/v1/license-text?license=Apache-2.0")
 
     assert response.json() == {"text": "Apache License\nVersion 2.0"}
     assert len(httpx_mock.get_requests()) == 2
@@ -826,7 +826,7 @@ def pkg_config_file(tmp_path):
 
 
 def test_path_excludes_missing_file_returns_empty(pkg_config_file):
-    response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/path-excludes?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {"package_id": "NPM::lodash:4.0.0", "path_excludes": []}
 
@@ -842,7 +842,7 @@ def test_path_excludes_populated_file_returns_list(pkg_config_file):
             }
         ]
     )
-    response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/path-excludes?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
@@ -854,7 +854,7 @@ def test_path_excludes_populated_file_returns_list(pkg_config_file):
 
 def test_path_excludes_put_creates_entry(pkg_config_file):
     response = client.put(
-        "/path-excludes",
+        "/api/v1/path-excludes",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "pattern": "tests/**",
@@ -877,7 +877,7 @@ def test_path_excludes_put_creates_entry(pkg_config_file):
 
 def test_path_excludes_put_twice_no_duplicates(pkg_config_file):
     client.put(
-        "/path-excludes",
+        "/api/v1/path-excludes",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "pattern": "tests/**",
@@ -886,7 +886,7 @@ def test_path_excludes_put_twice_no_duplicates(pkg_config_file):
         },
     )
     client.put(
-        "/path-excludes",
+        "/api/v1/path-excludes",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "pattern": "docs/**",
@@ -896,7 +896,7 @@ def test_path_excludes_put_twice_no_duplicates(pkg_config_file):
     )
     # same pattern again — should not duplicate
     client.put(
-        "/path-excludes",
+        "/api/v1/path-excludes",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "pattern": "tests/**",
@@ -904,7 +904,7 @@ def test_path_excludes_put_twice_no_duplicates(pkg_config_file):
             "comment": "",
         },
     )
-    response = client.get("/path-excludes?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/path-excludes?package_id=NPM::lodash:4.0.0")
     excludes = response.json()["path_excludes"]
     assert len(excludes) == 2
     patterns = [e["pattern"] for e in excludes]
@@ -924,7 +924,7 @@ def test_path_excludes_delete_removes_pattern(pkg_config_file):
         ]
     )
     response = client.delete(
-        "/path-excludes?package_id=NPM::lodash:4.0.0&pattern=tests%2F%2A%2A"
+        "/api/v1/path-excludes?package_id=NPM::lodash:4.0.0&pattern=tests%2F%2A%2A"
     )
     assert response.status_code == 200
     assert response.json() == {
@@ -947,7 +947,7 @@ def test_path_excludes_delete_nonexistent_pattern_returns_unchanged(pkg_config_f
         ]
     )
     response = client.delete(
-        "/path-excludes?package_id=NPM::lodash:4.0.0&pattern=nonexistent%2F%2A%2A"
+        "/api/v1/path-excludes?package_id=NPM::lodash:4.0.0&pattern=nonexistent%2F%2A%2A"
     )
     assert response.status_code == 200
     assert response.json() == {
@@ -961,7 +961,7 @@ def test_path_excludes_delete_nonexistent_pattern_returns_unchanged(pkg_config_f
 def test_path_excludes_put_propagates_to_siblings(pkg_config_file, scan_result_file):
     scan_result_file(MONOREPO_SIBLINGS_DATA)
     client.put(
-        "/path-excludes",
+        "/api/v1/path-excludes",
         json={
             "package_id": "NPM::pkg-a:1.0.0",
             "pattern": "tests/**",
@@ -996,7 +996,7 @@ def test_path_excludes_delete_propagates_to_siblings(pkg_config_file, scan_resul
         ]
     )
     client.delete(
-        "/path-excludes?package_id=NPM%3A%3Apkg-a%3A1.0.0&pattern=tests%2F%2A%2A"
+        "/api/v1/path-excludes?package_id=NPM%3A%3Apkg-a%3A1.0.0&pattern=tests%2F%2A%2A"
     )
     written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
     entries = {e["id"]: e for e in written}
@@ -1022,7 +1022,7 @@ def curations_file(tmp_path):
 
 
 def test_license_curations_missing_file_returns_null(curations_file):
-    response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
@@ -1043,7 +1043,7 @@ def test_license_curations_populated_file_returns_curation(curations_file):
             }
         ]
     )
-    response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
@@ -1054,7 +1054,7 @@ def test_license_curations_populated_file_returns_curation(curations_file):
 
 def test_license_curations_put_creates_entry(curations_file):
     response = client.put(
-        "/license-curations",
+        "/api/v1/license-curations",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "comment": "",
@@ -1074,7 +1074,7 @@ def test_license_curations_put_creates_entry(curations_file):
 
 def test_license_curations_put_twice_upserts(curations_file):
     client.put(
-        "/license-curations",
+        "/api/v1/license-curations",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "comment": "first",
@@ -1082,14 +1082,14 @@ def test_license_curations_put_twice_upserts(curations_file):
         },
     )
     client.put(
-        "/license-curations",
+        "/api/v1/license-curations",
         json={
             "package_id": "NPM::lodash:4.0.0",
             "comment": "second",
             "concluded_license": "Apache-2.0",
         },
     )
-    response = client.get("/license-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.json()["concluded_license"] == "Apache-2.0"
     assert response.json()["comment"] == "second"
     written = yaml.safe_load(main_module.CURATIONS_PATH.read_text())
@@ -1105,7 +1105,7 @@ def test_license_curations_delete_removes_entry(curations_file):
             }
         ]
     )
-    response = client.delete("/license-curations?package_id=NPM::lodash:4.0.0")
+    response = client.delete("/api/v1/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
@@ -1117,7 +1117,7 @@ def test_license_curations_delete_removes_entry(curations_file):
 
 
 def test_license_curations_delete_nonexistent_returns_null(curations_file):
-    response = client.delete("/license-curations?package_id=NPM::lodash:4.0.0")
+    response = client.delete("/api/v1/license-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
@@ -1127,7 +1127,7 @@ def test_license_curations_delete_nonexistent_returns_null(curations_file):
 
 
 def test_license_curations_all_empty_file_returns_empty_list(curations_file):
-    response = client.get("/license-curations/all")
+    response = client.get("/api/v1/license-curations/all")
     assert response.status_code == 200
     assert response.json() == []
 
@@ -1151,7 +1151,7 @@ def test_license_curations_all_returns_all_entries(curations_file):
             },
         ]
     )
-    response = client.get("/license-curations/all")
+    response = client.get("/api/v1/license-curations/all")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -1178,7 +1178,7 @@ def test_license_text_spdx_id_differs_from_key(httpx_mock: HTTPXMock):
         text="BSD 3-Clause License\n\nRedistribution and use...",
     )
 
-    response = client.get("/license-text?license=BSD-3-Clause")
+    response = client.get("/api/v1/license-text?license=BSD-3-Clause")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -1211,7 +1211,7 @@ FINDING_CURATION_2 = {
 
 
 def test_finding_curations_missing_file_returns_empty(pkg_config_file):
-    response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/finding-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json() == {
         "package_id": "NPM::lodash:4.0.0",
@@ -1228,7 +1228,7 @@ def test_finding_curations_populated_file_returns_list(pkg_config_file):
             }
         ]
     )
-    response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/finding-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     data = response.json()
     assert data["package_id"] == "NPM::lodash:4.0.0"
@@ -1247,14 +1247,14 @@ def test_finding_curations_entry_without_curations_key_returns_empty(pkg_config_
             }
         ]
     )
-    response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/finding-curations?package_id=NPM::lodash:4.0.0")
     assert response.status_code == 200
     assert response.json()["license_finding_curations"] == []
 
 
 def test_finding_curations_put_creates_entry(pkg_config_file):
     response = client.put(
-        "/finding-curations",
+        "/api/v1/finding-curations",
         json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
     )
     assert response.status_code == 200
@@ -1275,27 +1275,27 @@ def test_finding_curations_put_creates_entry(pkg_config_file):
 
 def test_finding_curations_put_two_different_findings(pkg_config_file):
     client.put(
-        "/finding-curations",
+        "/api/v1/finding-curations",
         json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
     )
     client.put(
-        "/finding-curations",
+        "/api/v1/finding-curations",
         json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION_2},
     )
-    response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/finding-curations?package_id=NPM::lodash:4.0.0")
     assert len(response.json()["license_finding_curations"]) == 2
 
 
 def test_finding_curations_put_upserts_same_key(pkg_config_file):
     client.put(
-        "/finding-curations",
+        "/api/v1/finding-curations",
         json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
     )
     updated = {**FINDING_CURATION, "concluded_license": "MIT", "comment": "updated"}
     client.put(
-        "/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **updated}
+        "/api/v1/finding-curations", json={"package_id": "NPM::lodash:4.0.0", **updated}
     )
-    response = client.get("/finding-curations?package_id=NPM::lodash:4.0.0")
+    response = client.get("/api/v1/finding-curations?package_id=NPM::lodash:4.0.0")
     curations = response.json()["license_finding_curations"]
     assert len(curations) == 1
     assert curations[0]["concluded_license"] == "MIT"
@@ -1314,7 +1314,7 @@ def test_finding_curations_put_preserves_path_excludes(pkg_config_file):
         ]
     )
     client.put(
-        "/finding-curations",
+        "/api/v1/finding-curations",
         json={"package_id": "NPM::lodash:4.0.0", **FINDING_CURATION},
     )
     written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
@@ -1334,7 +1334,7 @@ def test_finding_curations_delete_removes_entry(pkg_config_file):
         ]
     )
     response = client.delete(
-        f"/finding-curations"
+        f"/api/v1/finding-curations"
         f"?package_id=NPM%3A%3Alodash%3A4.0.0"
         f"&path={FINDING_CURATION['path']}"
         f"&start_lines={FINDING_CURATION['start_lines']}"
@@ -1348,7 +1348,7 @@ def test_finding_curations_delete_removes_entry(pkg_config_file):
 
 def test_finding_curations_delete_nonexistent_package_returns_empty(pkg_config_file):
     response = client.delete(
-        "/finding-curations"
+        "/api/v1/finding-curations"
         "?package_id=NPM%3A%3Alodash%3A4.0.0"
         "&path=src%2Futil.cpp"
         "&start_lines=3"
@@ -1366,7 +1366,7 @@ def test_finding_curations_delete_nonexistent_key_returns_unchanged(pkg_config_f
         [{"id": "NPM::lodash:4.0.0", "license_finding_curations": [FINDING_CURATION]}]
     )
     response = client.delete(
-        "/finding-curations"
+        "/api/v1/finding-curations"
         "?package_id=NPM%3A%3Alodash%3A4.0.0"
         "&path=src%2Fother.cpp"
         "&start_lines=1"
@@ -1423,7 +1423,7 @@ def test_finding_curations_put_propagates_to_siblings(
 ):
     scan_result_file(MONOREPO_SIBLINGS_DATA)
     client.put(
-        "/finding-curations",
+        "/api/v1/finding-curations",
         json={"package_id": "NPM::pkg-a:1.0.0", **FINDING_CURATION},
     )
     written = yaml.safe_load(main_module.PKG_CONFIG_PATH.read_text())
@@ -1451,7 +1451,7 @@ def test_finding_curations_delete_propagates_to_siblings(
         ]
     )
     client.delete(
-        f"/finding-curations"
+        f"/api/v1/finding-curations"
         f"?package_id=NPM%3A%3Apkg-a%3A1.0.0"
         f"&path={FINDING_CURATION['path']}"
         f"&start_lines={FINDING_CURATION['start_lines']}"

@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Lukas Hass <lukas@slucky.de>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/test-results
+**/playwright-report
+server/ort-out*
+server/cache.json
+frontend/openapi.json
+frontend/src/client
+.git
+.github
+.gitlab-ci.yml
+LICENSES
+.reuse

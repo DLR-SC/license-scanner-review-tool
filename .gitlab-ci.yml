@@ -52,6 +52,10 @@ frontend:build:
       artifacts: true
   script:
     - pnpm build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 hour
 
 frontend:type-check:
   extends: .frontend
@@ -90,10 +94,10 @@ frontend:test-e2e:
       allow_failure: true
 
 .python:
-  image: python:3.12-slim
+  image: python:3.12.13-slim-trixie@sha256:401f6e1a67dad31a1bd78e9ad22d0ee0a3b52154e6bd30e90be696bb6a3d7461
   needs: []
   before_script:
-    - pip install --no-cache-dir uv
+    - pip install --no-cache-dir uv==0.11.14
     - cd server
   cache:
     key:
@@ -116,11 +120,26 @@ server:format-check:
     - uv run black --check .
 
 reuse-lint:
-  image: python:3.12-slim
+  image: python:3.12.13-slim-trixie@sha256:401f6e1a67dad31a1bd78e9ad22d0ee0a3b52154e6bd30e90be696bb6a3d7461
   before_script:
     - pip install --no-cache-dir reuse
   script:
     - reuse lint
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build:docker:
+  image: docker:29.4.3-cli@sha256:51e23845f5caff1e688a2fae003b0c69d635c9200ad544731db1593731df1d3a
+  services:
+    - docker:29.4.3-dind@sha256:685b91dca8eab7de1dce1c303dbb7a763e4082d6a60db10968adf3295fbd2495
+  needs:
+    - job: frontend:build
+      artifacts: true
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - docker build -t license-scanner-review-tool:$CI_COMMIT_SHORT_SHA .
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
