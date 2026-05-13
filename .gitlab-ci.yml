@@ -7,7 +7,7 @@ default:
     - docker
 
 .frontend:
-  image: node:24
+  image: node:24.15.0@sha256:050bf2bbe33c1d6754e060bec89378a79ed831f04a7bb1a53fe45e997df7b3bb
   needs: []
   before_script:
     - corepack enable
@@ -82,7 +82,7 @@ frontend:test-unit:
 
 frontend:test-e2e:
   extends: .frontend
-  image: mcr.microsoft.com/playwright:v1.50.0-noble
+  image: mcr.microsoft.com/playwright:v1.50.0-noble@sha256:e46352b075b3c97e226ad9ed27d6999dbc6e7f021ba94b30d833136fcee349f1
   script:
     - pnpm test:e2e
   rules:
@@ -125,21 +125,6 @@ reuse-lint:
     - pip install --no-cache-dir reuse
   script:
     - reuse lint
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-build:docker:
-  image: docker:29.4.3-cli@sha256:51e23845f5caff1e688a2fae003b0c69d635c9200ad544731db1593731df1d3a
-  services:
-    - docker:29.4.3-dind@sha256:685b91dca8eab7de1dce1c303dbb7a763e4082d6a60db10968adf3295fbd2495
-  needs:
-    - job: frontend:build
-      artifacts: true
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-  script:
-    - docker build -t license-scanner-review-tool:$CI_COMMIT_SHORT_SHA .
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
