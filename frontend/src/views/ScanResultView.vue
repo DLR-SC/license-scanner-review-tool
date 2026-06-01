@@ -948,24 +948,26 @@ watch(
                 reliable and correct.
               </AppNote>
               <AppNote v-else>
-                Ensure that all licenses included after your review are compatible with the license
-                you are about to conclude. Refer to the
-                <a
-                  href="https://www.dlr.de/de/sc/medien/publikationen/broschuere-open-source-software-im-dlr"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline font-medium"
-                  >DLR Open Source compatibility guide</a
-                >
-                or use a
-                <a
-                  href="https://interoperable-europe.ec.europa.eu/collection/eupl/solution/licensing-assistant/compatibility-checker"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="underline font-medium"
-                  >license compatibility checker</a
-                >
-                for compatibility analysis.
+                <span>
+                  Ensure that all licenses included after your review are compatible with the
+                  license you are about to conclude. Refer to the
+                  <a
+                    href="https://www.dlr.de/de/sc/medien/publikationen/broschuere-open-source-software-im-dlr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline font-medium"
+                    >DLR Open Source compatibility guide</a
+                  >
+                  or use a
+                  <a
+                    href="https://interoperable-europe.ec.europa.eu/collection/eupl/solution/licensing-assistant/compatibility-checker"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline font-medium"
+                    >license compatibility checker</a
+                  >
+                  for compatibility analysis.
+                </span>
               </AppNote>
               <div v-if="includedLicenses.length" class="flex flex-wrap items-center gap-2">
                 <span class="text-xs text-gray-500 shrink-0 flex items-center gap-1">
