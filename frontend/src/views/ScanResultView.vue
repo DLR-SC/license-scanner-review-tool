@@ -741,12 +741,21 @@ watch(
                       <InfoTooltip
                         v-if="!currentPackage.declaredLicensesProcessed?.spdxExpression"
                         warning
-                        :text="
-                          (currentPackage.declaredLicenses?.length ?? 0) === 0
-                            ? 'No declared license found'
-                            : 'Not a valid SPDX expression'
-                        "
-                      />
+                      >
+                        <template v-if="(currentPackage.declaredLicenses?.length ?? 0) === 0">
+                          No declared license found. You can suggest a license below.
+                        </template>
+                        <template v-else>
+                          Not a valid
+                          <a
+                            href="https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="underline"
+                            >SPDX expression</a
+                          >. You can suggest a license below.
+                        </template>
+                      </InfoTooltip>
                       <LicensePill
                         v-if="currentPackage.declaredLicensesProcessed?.spdxExpression"
                         :license="currentPackage.declaredLicensesProcessed.spdxExpression"
@@ -1205,7 +1214,11 @@ watch(
               <AppCard>
                 <template #title>
                   <div class="flex items-center gap-3 text-sm h-8">
-                    <LicensePill :license="currentFinding.license" :score="currentFinding.score" />
+                    <LicensePill :license="currentFinding.license" :score="currentFinding.score">
+                      <InfoTooltip
+                        text="Confidence score from the scanner (0-100). A score of 100 is an exact match. Lower scores indicate a partial match."
+                      />
+                    </LicensePill>
                     <span class="text-gray-500"
                       >{{ currentFinding.location.path }}:{{ currentFinding.location.startLine }}-{{
                         currentFinding.location.endLine
@@ -1240,12 +1253,20 @@ watch(
                     placeholder="SPDX expression or NONE"
                     class="flex-1 min-w-0"
                     allow-none
-                  />
+                  >
+                    <InfoTooltip
+                      text="The SPDX expression that represents the actual license of this finding. Use NONE if the finding is not a license."
+                    />
+                  </SpdxInput>
                   <DescribedSelect
                     v-model="decisionReason"
                     :options="LICENSE_FINDING_CURATIONS_REASONS"
                     label="Reason"
-                  />
+                  >
+                    <InfoTooltip
+                      text="Reason for concluding this license for the finding. This helps other reviewers understand your decision when they review the package or related findings later."
+                    />
+                  </DescribedSelect>
                   <AppInput
                     v-model="decisionComment"
                     label="Comment"
@@ -1263,12 +1284,20 @@ watch(
                     v-model="excludeFormPattern"
                     :options="pathExcludeOptions(currentFinding.location.path)"
                     label="Path pattern"
-                  />
+                  >
+                    <InfoTooltip
+                      text="Glob pattern matched against file paths in this package. Files matching the pattern are excluded from the review and future license scans."
+                    />
+                  </DescribedSelect>
                   <DescribedSelect
                     v-model="excludeFormReason"
                     :options="PATH_EXCLUDE_REASONS"
                     label="Reason"
-                  />
+                  >
+                    <InfoTooltip
+                      text="Reason for excluding this path pattern. This helps other reviewers understand your decision when they review the package later."
+                    />
+                  </DescribedSelect>
                   <AppInput
                     v-model="excludeFormComment"
                     label="Comment"

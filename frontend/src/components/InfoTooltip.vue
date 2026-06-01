@@ -65,10 +65,12 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
       @keydown.enter.stop="toggle"
       @keydown.escape.stop="pinned = false"
     >
-      <CarbonInformationFilled
-        :class="warning ? 'text-yellow-600' : 'text-gray-400'"
-        aria-hidden="true"
-      />
+      <slot name="icon">
+        <CarbonInformationFilled
+          :class="warning ? 'text-yellow-600' : 'text-gray-400'"
+          aria-hidden="true"
+        />
+      </slot>
       <span class="sr-only">More information</span>
     </button>
     <span

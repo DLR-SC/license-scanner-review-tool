@@ -9,6 +9,7 @@ import { computed, useAttrs, useId } from 'vue'
 import parse from 'spdx-expression-parse'
 import CarbonCheckmark from '~icons/carbon/checkmark'
 import CarbonWarning from '~icons/carbon/warning'
+import InfoTooltip from './InfoTooltip.vue'
 
 defineOptions({ inheritAttrs: false })
 
@@ -52,9 +53,21 @@ const validity = computed((): Validity => {
         v-bind="{ ...attrs, class: undefined }"
         v-model="model"
       />
-      <span class="absolute right-2 text-sm leading-none pointer-events-none select-none">
-        <CarbonCheckmark v-if="validity === 'valid'" class="text-green-500" />
-        <CarbonWarning v-else-if="validity === 'invalid'" class="text-red-500" />
+      <span class="absolute right-2 text-sm leading-none select-none flex items-center gap-1">
+        <CarbonCheckmark v-if="validity === 'valid'" class="text-green-500 pointer-events-none" />
+        <InfoTooltip v-else-if="validity === 'invalid'">
+          <template #icon>
+            <CarbonWarning class="text-red-500" aria-hidden="true" />
+          </template>
+          Not a valid
+          <a
+            href="https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline"
+            >SPDX expression</a
+          >.
+        </InfoTooltip>
       </span>
     </div>
   </div>

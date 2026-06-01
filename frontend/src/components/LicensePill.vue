@@ -20,7 +20,7 @@ defineEmits<{
 <template>
   <component
     :is="clickable ? 'button' : 'div'"
-    class="inline-flex items-center rounded-full text-xs font-mono overflow-hidden"
+    class="inline-flex items-center text-xs font-mono"
     :class="
       clickable && !disabled
         ? 'cursor-pointer hover:brightness-95'
@@ -31,9 +31,20 @@ defineEmits<{
     :disabled="clickable ? disabled : undefined"
     @click="clickable && !disabled && $emit('click')"
   >
-    <span class="bg-gray-200 text-gray-800 px-2 py-0.5">{{ license }}</span>
-    <span v-if="score !== undefined" class="bg-gray-300 text-gray-600 px-2 py-0.5">{{
-      score
-    }}</span>
+    <span
+      class="bg-gray-200 text-gray-800 px-2 py-0.5"
+      :class="{
+        'rounded-full': score === undefined,
+        'rounded-l-full': score !== undefined,
+      }"
+      >{{ license }}</span
+    >
+    <div
+      v-if="score !== undefined"
+      class="flex gap-2 items-center bg-gray-300 text-gray-600 px-2 py-0.5 rounded-r-full"
+    >
+      {{ score }}
+      <slot />
+    </div>
   </component>
 </template>

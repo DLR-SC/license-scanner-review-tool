@@ -42,7 +42,9 @@ async function openDropdown() {
 
 <template>
   <div class="flex flex-col gap-1" ref="rootRef">
-    <label v-if="label" :for="id" class="text-xs text-gray-500">{{ label }}</label>
+    <label v-if="label" :for="id" class="text-xs text-gray-500 flex items-center gap-1"
+      >{{ label }}<slot
+    /></label>
     <div class="relative">
       <button
         :id="id"
