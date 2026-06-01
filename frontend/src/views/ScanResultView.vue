@@ -1356,10 +1356,26 @@ watch(
               </div>
               <AppCard v-else-if="wordDiff" class="mt-2">
                 <template #title>
-                  <span class="text-sm text-gray-600"
+                  <span class="text-sm text-gray-600 flex items-center gap-1"
                     >Diff vs. canonical
-                    <span class="font-mono">{{ currentFinding.license }}</span></span
-                  >
+                    <span class="font-mono">{{ currentFinding.license }}</span>
+                    <InfoTooltip>
+                      Difference between the detected license text and the canonical text from
+                      <a
+                        href="https://scancode-licensedb.aboutcode.org/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="underline whitespace-nowrap"
+                        >ScanCode LicenseDB</a
+                      >.
+                      <span class="block mt-1"
+                        ><span class="bg-green-100 text-green-800 px-0.5 rounded">green</span> = in
+                        detected only ·
+                        <span class="line-through bg-red-100 text-red-700 px-0.5 rounded">red</span>
+                        = in canonical only</span
+                      >
+                    </InfoTooltip>
+                  </span>
                 </template>
                 <pre
                   class="overflow-x-auto text-xs px-3 py-2"
