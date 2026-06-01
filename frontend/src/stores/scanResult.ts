@@ -57,9 +57,10 @@ export const useScanResultStore = defineStore('scanResult', () => {
 
   const dependencyMap = computed<Record<string, string[]>>(() => {
     if (!dependencyGraph.value) return {}
+    const realPackageIds = new Set(packages.value.map((p) => p.id))
     const map: Record<string, string[]> = {}
     for (const graph of Object.values(dependencyGraph.value)) {
-      const packages = graph.packages ?? []
+      const graphPackages = graph.packages ?? []
       const nodes = graph.nodes ?? []
       const edges = graph.edges ?? []
       const nodeToId: Record<number, string> = {}
@@ -67,7 +68,7 @@ export const useScanResultStore = defineStore('scanResult', () => {
         const node = nodes[i]
         if (node !== undefined) {
           const pkgIdx = node.pkg ?? 0
-          const pkgId = packages[pkgIdx]
+          const pkgId = graphPackages[pkgIdx]
           if (pkgId) nodeToId[i] = pkgId
         }
       }
@@ -75,14 +76,31 @@ export const useScanResultStore = defineStore('scanResult', () => {
       for (const edge of edges) {
         ;(adj[edge.from ?? 0] ??= []).push(edge.to ?? 0)
       }
+      const rawMap: Record<string, string[]> = {}
       for (const [nodeIdx, pkgId] of Object.entries(nodeToId)) {
         const childNodes = adj[Number(nodeIdx)] ?? []
         const childIds = childNodes.flatMap((n) => (nodeToId[n] ? [nodeToId[n]] : []))
         if (childIds.length > 0) {
-          map[pkgId] ??= []
+          rawMap[pkgId] ??= []
           for (const id of childIds) {
-            if (!map[pkgId].includes(id)) map[pkgId].push(id)
+            if (!rawMap[pkgId].includes(id)) rawMap[pkgId].push(id)
           }
+        }
+      }
+      // Collapse through virtual packages (extras like coverage[toml] that appear in
+      // the dep graph but not in the main analyzer packages list).
+      function resolveReal(pkgId: string, visited: Set<string>): string[] {
+        if (visited.has(pkgId)) return []
+        visited.add(pkgId)
+        if (realPackageIds.has(pkgId)) return [pkgId]
+        return (rawMap[pkgId] ?? []).flatMap((c) => resolveReal(c, visited))
+      }
+      for (const [pkgId, children] of Object.entries(rawMap)) {
+        if (!realPackageIds.has(pkgId)) continue
+        const resolved = children.flatMap((c) => resolveReal(c, new Set([pkgId])))
+        for (const id of resolved) {
+          map[pkgId] ??= []
+          if (!map[pkgId].includes(id)) map[pkgId].push(id)
         }
       }
     }
