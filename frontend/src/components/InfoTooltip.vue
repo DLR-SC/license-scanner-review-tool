@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, useTemplateRef, useId } from 'vue'
 import CarbonInformationFilled from '~icons/carbon/information-filled'
 
-defineProps<{ text: string; warning?: boolean }>()
+defineProps<{ text?: string; warning?: boolean }>()
 
 const pinned = ref(false)
 const hovered = ref(false)
@@ -80,7 +80,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
       :class="flipped ? 'top-full mt-1.5' : 'bottom-full mb-1.5'"
       :style="{ transform: `translateX(calc(-50% + ${offsetX}px))` }"
     >
-      {{ text }}
+      <slot>{{ text }}</slot>
       <span
         v-if="flipped"
         class="absolute bottom-full left-1/2 border-4 border-transparent border-b-gray-800"

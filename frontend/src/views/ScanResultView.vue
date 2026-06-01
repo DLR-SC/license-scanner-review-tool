@@ -806,7 +806,36 @@ watch(
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                      Weekly downloads
+                      <span class="flex items-center gap-1">
+                        Weekly downloads
+                        <InfoTooltip>
+                          Downloads from public package registries in the last week. Can be used as
+                          a rough indicator of the package's popularity and usage in the community.
+                          Sources:
+                          <ul class="mt-1 space-y-0.5">
+                            <li>
+                              npm:
+                              <a
+                                href="https://github.com/npm/registry/blob/main/docs/download-counts.md"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="underline"
+                                >npmjs API</a
+                              >
+                            </li>
+                            <li>
+                              PyPI:
+                              <a
+                                href="https://pypistats.org/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="underline"
+                                >pypistats.org</a
+                              >
+                            </li>
+                          </ul>
+                        </InfoTooltip>
+                      </span>
                     </th>
                     <td class="px-4 py-2">
                       <span v-if="downloadsLoading">…</span>
@@ -818,7 +847,12 @@ watch(
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                      GitHub stars
+                      <span class="flex items-center gap-1">
+                        GitHub stars
+                        <InfoTooltip
+                          text="Number of stars on the package's GitHub repository. A rough indicator of the package's popularity."
+                        />
+                      </span>
                     </th>
                     <td class="px-4 py-2">
                       <span v-if="starsLoading">…</span>
