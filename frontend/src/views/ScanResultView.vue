@@ -1048,9 +1048,18 @@ watch(
               placeholder="SPDX expression"
               class="w-2xl"
             >
-              <InfoTooltip
-                text="In case the declared license is missing or not a valid SPDX expression, you can suggest a license expression to help reduce the number of findings that need review. This does not change the declared license in the data, it's just a hint for the review process."
-              />
+              <InfoTooltip>
+                In case the declared license is missing or not a valid
+                <a
+                  href="https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline"
+                  >SPDX expression</a
+                >, you can suggest a license expression to help reduce the number of findings that
+                need review. This does not change the declared license in the data, it's just a hint
+                for the review process."
+              </InfoTooltip>
             </SpdxInput>
           </div>
           <div
@@ -1266,9 +1275,18 @@ watch(
                     class="flex-1 min-w-0"
                     allow-none
                   >
-                    <InfoTooltip
-                      text="The SPDX expression that represents the actual license of this finding. Use NONE if the finding is not a license."
-                    />
+                    <InfoTooltip>
+                      The
+                      <a
+                        href="https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="underline"
+                        >SPDX expression</a
+                      >
+                      that represents the actual license of this finding. Use NONE if the finding is
+                      not a license."
+                    </InfoTooltip>
                   </SpdxInput>
                   <DescribedSelect
                     v-model="decisionReason"
