@@ -735,7 +735,12 @@ watch(
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                      Declared licenses
+                      <span class="flex items-center gap-1">
+                        Declared licenses
+                        <InfoTooltip
+                          text="The license(s) the package author declared in the package manifest."
+                        />
+                      </span>
                     </th>
                     <td class="px-4 py-2 flex flex-wrap gap-1 items-center">
                       <InfoTooltip
@@ -771,7 +776,12 @@ watch(
                   </tr>
                   <tr>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                      Detected licenses
+                      <span class="flex items-center gap-1">
+                        Detected licenses
+                        <InfoTooltip
+                          text="Unique licenses detected by the scanner across all files in this package."
+                        />
+                      </span>
                     </th>
                     <td class="px-4 py-2">
                       <div class="flex flex-wrap gap-1">
