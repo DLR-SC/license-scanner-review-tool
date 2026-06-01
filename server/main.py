@@ -399,6 +399,7 @@ async def get_downloads(purl: str):
                 f"https://api.npmjs.org/downloads/point/last-week/{name}"
             )
             if r.status_code != 200:
+                logger.error("Failed to fetch npm downloads for %s: %s", name, r.text)
                 return DownloadStats(weekly_downloads=None)
             result = DownloadStats(weekly_downloads=r.json()["downloads"])
             _cache_set(cache_key, result, CACHE_TTL["npm_downloads"])
@@ -411,6 +412,7 @@ async def get_downloads(purl: str):
                 return cached
             r = await client.get(f"https://pypistats.org/api/packages/{name}/recent")
             if r.status_code != 200:
+                logger.error("Failed to fetch PyPI downloads for %s: %s", name, r.text)
                 return DownloadStats(weekly_downloads=None)
             result = DownloadStats(weekly_downloads=r.json()["data"]["last_week"])
             _cache_set(cache_key, result, CACHE_TTL["pypi_downloads"])
