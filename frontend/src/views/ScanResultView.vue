@@ -599,18 +599,21 @@ watch(
     <template v-else-if="store.packages.length">
       <!-- Root package list -->
       <template v-if="!currentPackage">
-        <span>Project under review:
-        <a
-          v-if="store.repository?.vcsProcessed.url"
-          :href="store.repository.vcsProcessed.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-sm text-blue-600 hover:underline font-mono mb-4"
-          >{{ store.repository.vcsProcessed.url }}</a
-        ></span>
+        <h2 class="text-xl font-semibold">Project overview</h2>
+        <span
+          >Project source repository:
+          <a
+            v-if="store.repository?.vcsProcessed.url"
+            :href="store.repository.vcsProcessed.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-blue-600 hover:underline font-mono mb-4"
+            >{{ store.repository.vcsProcessed.url }}</a
+          ></span
+        >
         <div>
-        <h2 class="text-xl font-semibold">Direct Dependencies</h2>
-        <span class="text-gray-500 mb-4">Select a package to review</span>
+          <h2 class="text-xl font-semibold">Direct Dependencies</h2>
+          <span class="text-gray-500 mb-4">Select a package to review</span>
         </div>
         <ul class="flex flex-col gap-1">
           <li v-for="rootId in store.rootPackageIds" :key="rootId">
@@ -632,6 +635,14 @@ watch(
             </RouterLink>
           </li>
         </ul>
+        <div class="border-t pt-4 mt-4">
+          <p class="text-sm text-gray-500">
+            New to this tool?
+            <RouterLink to="/about" class="text-blue-600 hover:underline"
+              >Learn what you can do here</RouterLink
+            >.
+          </p>
+        </div>
       </template>
 
       <template v-else>

@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="max-w-4xl mx-auto px-6 py-6 space-y-6">
+    <RouterLink to="/review/" class="text-sm text-blue-600 hover:underline"
+      >← Back to project overview</RouterLink
+    >
     <p class="mt-2 text-gray-600 py-6">
       A web interface for reviewing the results of a license scan performed by the
       <a
