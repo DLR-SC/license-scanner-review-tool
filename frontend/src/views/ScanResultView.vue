@@ -599,7 +599,19 @@ watch(
     <template v-else-if="store.packages.length">
       <!-- Root package list -->
       <template v-if="!currentPackage">
-        <h1 class="text-xl font-semibold mb-4">Select a package to review</h1>
+        <span>Project under review:
+        <a
+          v-if="store.repository?.vcsProcessed.url"
+          :href="store.repository.vcsProcessed.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-sm text-blue-600 hover:underline font-mono mb-4"
+          >{{ store.repository.vcsProcessed.url }}</a
+        ></span>
+        <div>
+        <h2 class="text-xl font-semibold">Direct Dependencies</h2>
+        <span class="text-gray-500 mb-4">Select a package to review</span>
+        </div>
         <ul class="flex flex-col gap-1">
           <li v-for="rootId in store.rootPackageIds" :key="rootId">
             <RouterLink
@@ -613,6 +625,10 @@ watch(
                 aria-hidden="true"
               />
               {{ rootId }}
+              <LicensePill
+                v-if="store.curations[rootId]?.concludedLicense"
+                :license="store.curations[rootId]?.concludedLicense!"
+              />
             </RouterLink>
           </li>
         </ul>
