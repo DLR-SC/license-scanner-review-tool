@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+[tool.poetry]
+package-mode = false
+
 [project]
 name = "server"
 version = "0.1.0"
@@ -22,3 +25,7 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "--ignore-glob=ort-out**/"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"

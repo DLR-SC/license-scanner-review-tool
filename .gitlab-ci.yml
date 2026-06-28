@@ -26,7 +26,7 @@ default:
 frontend:export-schema:
   extends: .python
   script:
-    - uv run python export_openapi.py
+    - poetry run python export_openapi.py
   artifacts:
     paths:
       - frontend/openapi.json
@@ -96,15 +96,18 @@ frontend:test-e2e:
 .python:
   image: python:3.12.13-slim-trixie@sha256:401f6e1a67dad31a1bd78e9ad22d0ee0a3b52154e6bd30e90be696bb6a3d7461
   needs: []
+  variables:
+    POETRY_VIRTUALENVS_IN_PROJECT: "1"
   before_script:
-    - pip install --no-cache-dir uv==0.11.14
+    - pip install --no-cache-dir poetry==2.2.1
     - cd server
+    - poetry install
   cache:
     key:
       files:
-        - server/uv.lock
+        - server/poetry.lock
     paths:
-      - ~/.cache/uv/
+      - server/.venv/
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -112,12 +115,12 @@ frontend:test-e2e:
 server:test:
   extends: .python
   script:
-    - uv run pytest
+    - poetry run pytest
 
 server:format-check:
   extends: .python
   script:
-    - uv run black --check .
+    - poetry run black --check .
 
 reuse-lint:
   image: python:3.12.13-slim-trixie@sha256:401f6e1a67dad31a1bd78e9ad22d0ee0a3b52154e6bd30e90be696bb6a3d7461

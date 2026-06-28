@@ -19,7 +19,7 @@ The image bundles the FastAPI server with the prebuilt SPA. Because the frontend
 
 ```sh
 # 1. Export the OpenAPI schema, generate the TS client, and build the SPA
-(cd server && uv run python export_openapi.py)
+(cd server && poetry run python export_openapi.py)
 (cd frontend && pnpm install --frozen-lockfile && pnpm run generate && pnpm build)
 
 # 2. Build the image

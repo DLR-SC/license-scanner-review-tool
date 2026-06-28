@@ -18,20 +18,20 @@ The server is responsible for:
 ### Install dependencies
 
 ```sh
-uv sync
+poetry install
 ```
 
 ### Run the server
 
 ```sh
-uv run fastapi dev main.py
+poetry run fastapi dev main.py
 
 # or use disk cache to reduce external requests
-CACHE_BACKEND=disk uv run fastapi dev main.py
+CACHE_BACKEND=disk poetry run fastapi dev main.py
 ```
 
 ### Run tests
 
 ```sh
-uv run pytest
+poetry run pytest
 ```
