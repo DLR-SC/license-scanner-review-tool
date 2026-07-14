@@ -39,3 +39,7 @@ Open <http://localhost:8000>. The container exposes two mount points:
 
 - `/data/ort-out` — directory holding `scan-result.yml`, `package-configurations.yml`, and `curations.yml`. The server writes curations back here, so it must be writable.
 - `/cache` — named volume for the external-API cache (`cache.json`), persisted across restarts.
+
+## Screenshot
+
+![Screenshot](screenshot.png)
